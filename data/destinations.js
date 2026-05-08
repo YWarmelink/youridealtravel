@@ -36,6 +36,14 @@ export const destinations = [
     latlon: [42.87, 74.59],
   },
   {
+    id: "kyrgyzstan-uzbekistan", name: "Kirgizië + Oezbekistan", class: 1,
+    continent: "asia", region: "central-asia",
+    flight: 650, dailyCost: 47, tripDays: 22, fatigue: 3,
+    bestMonths: [5, 6, 7, 8, 9],
+    latlon: [42.1, 69.6],
+    combo: true,
+  },
+  {
     id: "laos",        name: "Laos",              class: 1,
     continent: "asia", region: "southeast-asia",
     flight: 700, dailyCost: 45, tripDays: 14, fatigue: 2,
@@ -87,6 +95,14 @@ export const destinations = [
     combo: true,
   },
   {
+    id: "caucasus-full", name: "Georgië + Armenië + Azerbeidzjan", class: 1,
+    continent: "asia", region: "caucasus",
+    flight: 350, dailyCost: 58, tripDays: 26, fatigue: 2,
+    bestMonths: [4, 5, 6, 9, 10],
+    latlon: [40.8, 46.4],
+    combo: true,
+  },
+  {
     id: "turkey",      name: "Turkey",            class: 1,
     continent: "asia", region: "mediterranean",
     flight: 200, dailyCost: 75, tripDays: 14, fatigue: 1,
@@ -106,6 +122,14 @@ export const destinations = [
     flight: 750, dailyCost: 90, tripDays: 14, fatigue: 1,
     bestMonths: [4, 5, 9, 10],
     latlon: [37.57, 126.98],
+  },
+  {
+    id: "taiwan-korea", name: "Taiwan + South Korea", class: 1,
+    continent: "asia", region: "east-asia",
+    flight: 950, dailyCost: 85, tripDays: 20, fatigue: 1,
+    bestMonths: [4, 5, 9, 10],
+    latlon: [31.3, 124.3],
+    combo: true,
   },
   {
     id: "balkans",     name: "Balkans",           class: 1,
