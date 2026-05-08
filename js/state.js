@@ -1,7 +1,11 @@
+import { YEAR_BUDGETS } from "../data/destinations.js";
+
+export { YEAR_BUDGETS };
+
 export const state = {
-  budget: 6000,
   year: 2027,
-  travelMonth: new Date().getMonth() + 1,
-  selectedCountries: [],
-  activePlan: [],
+  get budget() {
+    const b = YEAR_BUDGETS[this.year];
+    return Math.round((b.min + b.max) / 2);
+  },
 };

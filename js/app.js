@@ -1,34 +1,37 @@
-import { state } from "./state.js";
+import { state, YEAR_BUDGETS } from "./state.js";
 import { initMap, updateMapUI } from "./map.js";
-import { generatePlan } from "./planner.js";
-import { renderTimeline } from "./timeline.js";
+import { generatePlans } from "./planner.js";
+import { renderPlans } from "./timeline.js";
+
+let currentPlans = [];
 
 export function updateApp(reason) {
-  state.activePlan = generatePlan(state);
-  renderTimeline(state);
-  updateMapUI(state);
+  currentPlans = generatePlans(state);
+  renderPlans(currentPlans, state);
+  updateMapUI(currentPlans);
+  renderBudgetBar(state);
+}
 
-  document.getElementById("budgetValue").textContent =
-    `€${state.budget.toLocaleString("nl-NL")}`;
+function renderBudgetBar(state) {
+  const b = YEAR_BUDGETS[state.year];
+  document.getElementById("budgetRange").textContent =
+    `€${b.min.toLocaleString("nl-NL")} – €${b.max.toLocaleString("nl-NL")}`;
+  document.getElementById("budgetTarget").textContent =
+    `€${state.budget.toLocaleString("nl-NL")} doel`;
 }
 
 initMap();
 
-const budgetEl = document.getElementById("budget");
-const monthEl  = document.getElementById("month");
-
-budgetEl.value = state.budget;
-monthEl.value  = state.travelMonth;
-
-budgetEl.oninput = e => {
-  state.budget = +e.target.value;
-  updateApp("budget");
-};
-
-monthEl.onchange = e => {
-  state.travelMonth = +e.target.value;
-  updateApp("month");
-};
+// Year selector
+const yearBtns = document.querySelectorAll(".year-btn");
+yearBtns.forEach(btn => {
+  if (+btn.dataset.year === state.year) btn.classList.add("active");
+  btn.onclick = () => {
+    state.year = +btn.dataset.year;
+    yearBtns.forEach(b => b.classList.toggle("active", b === btn));
+    updateApp("year");
+  };
+});
 
 document.getElementById("generate").onclick = () => updateApp("manual");
 

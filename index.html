@@ -12,35 +12,38 @@
 
   <aside class="panel">
     <h2>Travel OS</h2>
+    <p class="panel-sub">Persoonlijke reisoptimalisatie</p>
 
-    <label>Budget</label>
-    <input type="range" id="budget" min="2000" max="12000" step="500">
-    <div id="budgetValue" class="value-display"></div>
+    <div class="section-label">Jaar</div>
+    <div class="year-buttons">
+      <button class="year-btn" data-year="2026">2026</button>
+      <button class="year-btn" data-year="2027">2027</button>
+      <button class="year-btn" data-year="2028">2028</button>
+    </div>
 
-    <label>Vertrekmaand</label>
-    <select id="month">
-      <option value="1">Januari</option>
-      <option value="2">Februari</option>
-      <option value="3">Maart</option>
-      <option value="4">April</option>
-      <option value="5">Mei</option>
-      <option value="6">Juni</option>
-      <option value="7">Juli</option>
-      <option value="8">Augustus</option>
-      <option value="9">September</option>
-      <option value="10">Oktober</option>
-      <option value="11">November</option>
-      <option value="12">December</option>
-    </select>
+    <div class="budget-block">
+      <div id="budgetRange" class="budget-range"></div>
+      <div id="budgetTarget" class="budget-target"></div>
+    </div>
 
-    <button id="generate">Genereer plan</button>
+    <div class="class-legend">
+      <div class="section-label">Klassen</div>
+      <div class="legend-row"><span class="dot class-dot-1"></span> Class 1 — High Value</div>
+      <div class="legend-row"><span class="dot class-dot-2"></span> Class 2 — Mid Premium</div>
+      <div class="legend-row"><span class="dot class-dot-3"></span> Class 3 — Bucket List</div>
+    </div>
 
-    <h3>Geplande reizen</h3>
-    <div id="timeline"></div>
+    <div class="map-legend">
+      <div class="legend-row"><span class="dot green"></span> In beste plan</div>
+      <div class="legend-row"><span class="dot amber"></span> In alternatief</div>
+    </div>
+
+    <button id="generate">Genereer plannen</button>
   </aside>
 
   <main>
     <section id="map"></section>
+    <section id="timeline"></section>
   </main>
 
 </div>
