@@ -12,6 +12,7 @@ export const destinations = [
     flight: 700, dailyCost: 60, tripDays: 16, fatigue: 2,
     bestMonths: [11, 12, 1, 2, 3],
     latlon: [3.14, 101.69],
+    strict: true,
   },
   {
     id: "malaysia-brunei", name: "Malaysia + Brunei", class: 1,
@@ -19,7 +20,7 @@ export const destinations = [
     flight: 800, dailyCost: 63, tripDays: 20, fatigue: 2,
     bestMonths: [1, 2, 3, 11, 12],
     latlon: [4.0, 108.0],
-    combo: true,
+    combo: true, strict: true,
   },
   {
     id: "uzbekistan",  name: "Uzbekistan",        class: 1,
@@ -34,6 +35,7 @@ export const destinations = [
     flight: 600, dailyCost: 45, tripDays: 16, fatigue: 3,
     bestMonths: [6, 7, 8, 9],
     latlon: [42.87, 74.59],
+    strict: true,
   },
   {
     id: "kyrgyzstan-uzbekistan", name: "Kirgizië + Oezbekistan", class: 1,
@@ -41,7 +43,7 @@ export const destinations = [
     flight: 650, dailyCost: 47, tripDays: 22, fatigue: 3,
     bestMonths: [5, 6, 7, 8, 9],
     latlon: [42.1, 69.6],
-    combo: true,
+    combo: true, strict: true,
   },
   {
     id: "laos",        name: "Laos",              class: 1,
@@ -49,6 +51,7 @@ export const destinations = [
     flight: 700, dailyCost: 45, tripDays: 14, fatigue: 2,
     bestMonths: [11, 12, 1, 2, 3],
     latlon: [17.97, 102.63],
+    strict: true,
   },
   {
     id: "vietnam",     name: "Vietnam",           class: 1,
@@ -56,6 +59,7 @@ export const destinations = [
     flight: 600, dailyCost: 55, tripDays: 16, fatigue: 2,
     bestMonths: [2, 3, 4, 10, 11],
     latlon: [21.03, 105.83],
+    strict: true,
   },
   {
     id: "vietnam-laos", name: "Vietnam + Laos",   class: 1,
@@ -63,7 +67,7 @@ export const destinations = [
     flight: 700, dailyCost: 50, tripDays: 22, fatigue: 2,
     bestMonths: [11, 12, 1, 2, 3],
     latlon: [18.0, 103.5],
-    combo: true,
+    combo: true, strict: true,
   },
   {
     id: "georgia",     name: "Georgia",           class: 1,
@@ -137,6 +141,7 @@ export const destinations = [
     flight: 180, dailyCost: 65, tripDays: 14, fatigue: 2,
     bestMonths: [5, 6, 7, 8, 9],
     latlon: [44.82, 20.46],
+    strict: true,
   },
   {
     id: "iceland",     name: "Iceland",           class: 1,
@@ -195,6 +200,7 @@ export const destinations = [
     flight: 1050, dailyCost: 70, tripDays: 19, fatigue: 3,
     bestMonths: [5, 6, 7, 8, 9],
     latlon: [-12.04, -77.03],
+    strict: true,
   },
   {
     id: "bolivia",     name: "Bolivia",           class: 3,
@@ -202,6 +208,7 @@ export const destinations = [
     flight: 1150, dailyCost: 55, tripDays: 19, fatigue: 3,
     bestMonths: [5, 6, 7, 8, 9, 10],
     latlon: [-16.50, -68.15],
+    strict: true,
   },
   {
     id: "peru-bolivia", name: "Peru + Bolivia",   class: 3,
@@ -209,7 +216,7 @@ export const destinations = [
     flight: 1050, dailyCost: 64, tripDays: 24, fatigue: 3,
     bestMonths: [5, 6, 7, 8, 9],
     latlon: [-13.5, -72.0],
-    combo: true,
+    combo: true, strict: true,
   },
 ];
 

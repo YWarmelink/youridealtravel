@@ -13,7 +13,9 @@ function hasSpacingConflict(trips, candidateMonth, candidateDays) {
 
 function findMonth(dest, existingTrips) {
   const all = [1,2,3,4,5,6,7,8,9,10,11,12];
-  const preferred = [...dest.bestMonths, ...all.filter(m => !dest.bestMonths.includes(m))];
+  // strict destinations are never placed in a month with season score 0
+  const allowed = dest.strict ? all.filter(m => seasonScore(dest, m) > 0) : all;
+  const preferred = [...dest.bestMonths, ...allowed.filter(m => !dest.bestMonths.includes(m))];
   for (const m of preferred) {
     if (!hasSpacingConflict(existingTrips, m, dest.tripDays)) return m;
   }
