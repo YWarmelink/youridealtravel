@@ -14,11 +14,12 @@ export const destinations = [
     latlon: [3.14, 101.69],
   },
   {
-    id: "brunei",      name: "Brunei",            class: 1,
+    id: "malaysia-brunei", name: "Malaysia + Brunei", class: 1,
     continent: "asia", region: "southeast-asia",
-    flight: 800, dailyCost: 70, tripDays: 6, fatigue: 1,
-    bestMonths: [1, 2, 3, 6, 7, 8],
-    latlon: [4.94, 114.95],
+    flight: 800, dailyCost: 63, tripDays: 20, fatigue: 2,
+    bestMonths: [1, 2, 3, 11, 12],
+    latlon: [4.0, 108.0],
+    combo: true,
   },
   {
     id: "uzbekistan",  name: "Uzbekistan",        class: 1,
@@ -49,6 +50,14 @@ export const destinations = [
     latlon: [21.03, 105.83],
   },
   {
+    id: "vietnam-laos", name: "Vietnam + Laos",   class: 1,
+    continent: "asia", region: "southeast-asia",
+    flight: 700, dailyCost: 50, tripDays: 22, fatigue: 2,
+    bestMonths: [11, 12, 1, 2, 3],
+    latlon: [18.0, 103.5],
+    combo: true,
+  },
+  {
     id: "georgia",     name: "Georgia",           class: 1,
     continent: "asia", region: "caucasus",
     flight: 300, dailyCost: 60, tripDays: 14, fatigue: 1,
@@ -68,6 +77,14 @@ export const destinations = [
     flight: 350, dailyCost: 60, tripDays: 14, fatigue: 1,
     bestMonths: [4, 5, 6, 9, 10],
     latlon: [40.41, 49.87],
+  },
+  {
+    id: "caucasus",    name: "Georgië + Armenië", class: 1,
+    continent: "asia", region: "caucasus",
+    flight: 350, dailyCost: 58, tripDays: 18, fatigue: 1,
+    bestMonths: [4, 5, 6, 9, 10],
+    latlon: [41.0, 44.7],
+    combo: true,
   },
   {
     id: "turkey",      name: "Turkey",            class: 1,
@@ -161,6 +178,14 @@ export const destinations = [
     flight: 1150, dailyCost: 55, tripDays: 19, fatigue: 3,
     bestMonths: [5, 6, 7, 8, 9, 10],
     latlon: [-16.50, -68.15],
+  },
+  {
+    id: "peru-bolivia", name: "Peru + Bolivia",   class: 3,
+    continent: "americas", region: "south-america",
+    flight: 1050, dailyCost: 64, tripDays: 24, fatigue: 3,
+    bestMonths: [5, 6, 7, 8, 9],
+    latlon: [-13.5, -72.0],
+    combo: true,
   },
 ];
 

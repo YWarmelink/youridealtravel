@@ -285,6 +285,7 @@ main { display: flex; flex-direction: column; overflow: auto; }
 .fatigue-3  { background: #fef2f2; color: #991b1b; border: 1px solid #fecaca; }
 
 .vac-badge  { background: #eef2ff; color: #4338ca; border: 1px solid #c7d2fe; cursor: default; }
+.badge-combo { background: #f0f9ff; color: #0369a1; border: 1px solid #bae6fd; }
 
 /* ── Explanation box ─────────────────────────────────────── */
 

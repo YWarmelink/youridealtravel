@@ -61,6 +61,7 @@ function tripCard(trip, state) {
       </div>
       <div class="trip-badges">
         <span class="badge class-${trip.class}">${CLASS_LABEL[trip.class]}</span>
+        ${trip.combo ? `<span class="badge badge-combo">Combo</span>` : ""}
         ${seasonBadge(trip, trip.startMonth)}
         <span class="badge fatigue-${trip.fatigue}">${FATIGUE_LABEL[trip.fatigue]}</span>
         <span class="badge vac-badge"${vacTip}>🗓 ${vacText}</span>
