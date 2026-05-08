@@ -3,27 +3,21 @@ import { score } from "./engine.js";
 
 export function generatePlan(state) {
 
-  let plan = [];
+  const scored = countries
+    .map(c => ({ ...c, score: score(c, state) }))
+    .sort((a, b) => b.score - a.score);
 
-  for (let i = 0; i < 2; i++) {
+  const plan = [];
+  const usedRegions = new Set();
 
-    let best = null;
-    let bestScore = -999;
+  for (const c of scored) {
+    if (plan.length >= 3) break;
+    if (usedRegions.has(c.region)) continue;
 
-    for (let c of countries) {
+    const tripMonth = ((state.travelMonth - 1 + plan.length * 3) % 12) + 1;
 
-      const s = score(c, state);
-
-      if (s > bestScore) {
-        best = c;
-        bestScore = s;
-      }
-    }
-
-    plan.push({
-      ...best,
-      month: 2 + i * 3
-    });
+    plan.push({ ...c, month: tripMonth });
+    usedRegions.add(c.region);
   }
 
   return plan;

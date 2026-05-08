@@ -4,26 +4,32 @@ import { generatePlan } from "./planner.js";
 import { renderTimeline } from "./timeline.js";
 
 export function updateApp(reason) {
-
-  console.log("update:", reason);
-
   state.activePlan = generatePlan(state);
-
   renderTimeline(state);
   updateMapUI(state);
-}
 
-window.state = state;
+  document.getElementById("budgetValue").textContent =
+    `€${state.budget.toLocaleString("nl-NL")}`;
+}
 
 initMap();
 
-updateApp("init");
+const budgetEl = document.getElementById("budget");
+const monthEl  = document.getElementById("month");
 
-document.getElementById("generate").onclick = () => {
-  updateApp("manual-generate");
-};
+budgetEl.value = state.budget;
+monthEl.value  = state.travelMonth;
 
-document.getElementById("budget").oninput = (e) => {
+budgetEl.oninput = e => {
   state.budget = +e.target.value;
-  updateApp("budget-change");
+  updateApp("budget");
 };
+
+monthEl.onchange = e => {
+  state.travelMonth = +e.target.value;
+  updateApp("month");
+};
+
+document.getElementById("generate").onclick = () => updateApp("manual");
+
+updateApp("init");
