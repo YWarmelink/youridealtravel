@@ -2,6 +2,7 @@ import { state, YEAR_BUDGETS } from "./state.js";
 import { initMap, updateMapUI } from "./map.js";
 import { generatePlans } from "./planner.js";
 import { renderPlans } from "./timeline.js";
+import { initPicker } from "./picker.js";
 
 let currentPlans = [];
 
@@ -48,3 +49,4 @@ document.getElementById("generate").onclick = () => updateApp("manual");
 
 initMap();
 updateApp("init");
+initPicker();
