@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Travel OS v1.1.1</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+
+<body>
+
+<div class="app">
+
+  <aside class="panel">
+    <h2>Travel OS</h2>
+
+    <label>Budget</label>
+    <input type="range" id="budget" min="2000" max="12000" step="500">
+    <div id="budgetValue"></div>
+
+    <button id="generate">Generate</button>
+
+    <h3>Selected</h3>
+    <div id="selectedList"></div>
+  </aside>
+
+  <main>
+
+    <section id="map"></section>
+
+    <section id="timeline"></section>
+
+  </main>
+
+</div>
+
+<script type="module" src="./js/app.js"></script>
+
+</body>
+</html>
