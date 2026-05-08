@@ -3,6 +3,11 @@
 <head>
   <meta charset="UTF-8">
   <title>Travel OS</title>
+
+  <!-- Leaflet -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
   <link rel="stylesheet" href="styles.css">
 </head>
 
@@ -28,21 +33,21 @@
 
     <div class="class-legend">
       <div class="section-label">Klassen</div>
-      <div class="legend-row"><span class="dot class-dot-1"></span> Class 1 — High Value</div>
-      <div class="legend-row"><span class="dot class-dot-2"></span> Class 2 — Mid Premium</div>
-      <div class="legend-row"><span class="dot class-dot-3"></span> Class 3 — Bucket List</div>
+      <div class="legend-row"><span class="dot dot-c1"></span> Class 1 — High Value</div>
+      <div class="legend-row"><span class="dot dot-c2"></span> Class 2 — Mid Premium</div>
+      <div class="legend-row"><span class="dot dot-c3"></span> Class 3 — Bucket List</div>
     </div>
 
     <div class="map-legend">
-      <div class="legend-row"><span class="dot green"></span> In beste plan</div>
-      <div class="legend-row"><span class="dot amber"></span> In alternatief</div>
+      <div class="legend-row"><span class="dot dot-plan"></span> In beste plan</div>
+      <div class="legend-row"><span class="dot dot-alt"></span> In een alternatief</div>
     </div>
 
     <button id="generate">Genereer plannen</button>
   </aside>
 
   <main>
-    <section id="map"></section>
+    <div id="map"></div>
     <section id="timeline"></section>
   </main>
 
