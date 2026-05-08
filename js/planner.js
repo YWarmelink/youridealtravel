@@ -1,7 +1,6 @@
 import { destinations, YEAR_BUDGETS, EUROPE_TRIPS, EUROPE_TRIP_COST, EUROPE_TRIP_DAYS } from "../data/destinations.js";
-import { tripCost, scoreDestination, seasonScore, scorePlan } from "./engine.js";
+import { tripCost, scoreDestination, seasonScore, scorePlan, calcVacationDays } from "./engine.js";
 
-// Returns true if the candidate month conflicts with any existing trip (2-month gap required)
 function hasSpacingConflict(trips, candidateMonth, candidateDays) {
   const candEnd = candidateMonth + Math.ceil(candidateDays / 30);
   for (const t of trips) {
@@ -12,7 +11,6 @@ function hasSpacingConflict(trips, candidateMonth, candidateDays) {
   return false;
 }
 
-// Try best months first, then all others, and return the first valid month
 function findMonth(dest, existingTrips) {
   const all = [1,2,3,4,5,6,7,8,9,10,11,12];
   const preferred = [...dest.bestMonths, ...all.filter(m => !dest.bestMonths.includes(m))];
@@ -44,19 +42,34 @@ function buildPlan(state, excludeIds = []) {
   const reservedBudget = EUROPE_TRIPS * EUROPE_TRIP_COST;
   const availableBudget = budget - reservedBudget;
 
-  const scored = destinations
-    .filter(d => !excludeIds.includes(d.id))
-    .map(d => ({ ...d, _score: scoreDestination(d, state) }))
-    .sort((a, b) => b._score - a._score);
-
-  // Estimate how many trips fit (based on average cost of top candidates)
-  const sampleCosts = scored.slice(0, Math.min(8, scored.length)).map(tripCost);
-  const avgCost = sampleCosts.reduce((s, c) => s + c, 0) / sampleCosts.length;
-  const numTrips = Math.min(4, Math.max(2, Math.floor(availableBudget / avgCost)));
-
+  // ── 1. Place locked trips first ─────────────────────
+  const locks = state.locks || {};
   const trips = [];
   let budgetUsed = 0;
 
+  for (const [id, month] of Object.entries(locks)) {
+    const dest = destinations.find(d => d.id === id);
+    if (!dest) continue;
+    const cost = tripCost(dest);
+    const lockedTrip = { ...dest, startMonth: +month, cost, locked: true };
+    insertSorted(trips, lockedTrip);
+    budgetUsed += cost;
+  }
+
+  // ── 2. Score and sort remaining candidates ───────────
+  const lockedIds = Object.keys(locks);
+  const scored = destinations
+    .filter(d => !excludeIds.includes(d.id) && !lockedIds.includes(d.id))
+    .map(d => ({ ...d, _score: scoreDestination(d, state) }))
+    .sort((a, b) => b._score - a._score);
+
+  const sampleCosts = scored.slice(0, Math.min(8, scored.length)).map(tripCost);
+  const avgCost = sampleCosts.length
+    ? sampleCosts.reduce((s, c) => s + c, 0) / sampleCosts.length
+    : 1500;
+  const numTrips = Math.min(4, Math.max(2, Math.floor(availableBudget / avgCost)));
+
+  // ── 3. Greedy fill ───────────────────────────────────
   for (const dest of scored) {
     if (trips.length >= numTrips) break;
 
@@ -70,8 +83,7 @@ function buildPlan(state, excludeIds = []) {
     insertSorted(trips, newTrip);
 
     if (violatesConstraints(trips)) {
-      const idx = trips.indexOf(newTrip);
-      trips.splice(idx, 1);
+      trips.splice(trips.indexOf(newTrip), 1);
       continue;
     }
 
@@ -79,7 +91,10 @@ function buildPlan(state, excludeIds = []) {
   }
 
   const totalCost = budgetUsed + reservedBudget;
-  const vacationDays = trips.reduce((s, t) => s + t.tripDays + 2, 0) + EUROPE_TRIPS * (EUROPE_TRIP_DAYS + 1);
+  const vacationDays =
+    trips.reduce((s, t) => s + calcVacationDays(t.tripDays), 0) +
+    EUROPE_TRIPS * 3; // ~3 weekdays per Europe trip (Thu–Mon)
+
   const avgFatigue = trips.length
     ? trips.reduce((s, t) => s + t.fatigue, 0) / trips.length
     : 0;
@@ -100,17 +115,20 @@ function buildPlan(state, excludeIds = []) {
 }
 
 export function generatePlans(state) {
-  // Score all destinations once to know which are "top" candidates
+  const lockedIds = Object.keys(state.locks || {});
+
+  // Score non-locked destinations to determine exclusion candidates for alternatives
   const allScored = destinations
+    .filter(d => !lockedIds.includes(d.id))
     .map(d => ({ ...d, _score: scoreDestination(d, state) }))
     .sort((a, b) => b._score - a._score);
 
   const best = buildPlan(state, []);
 
   const alts = [];
-  // 5 alternatives: each excludes one of the top-5 scored destinations
   for (let i = 0; i < 5; i++) {
-    alts.push(buildPlan(state, [allScored[i].id]));
+    const excludeId = allScored[i]?.id;
+    alts.push(buildPlan(state, excludeId ? [excludeId] : []));
   }
 
   return [best, ...alts];

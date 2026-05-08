@@ -20,8 +20,6 @@ function renderBudgetBar(state) {
     `€${state.budget.toLocaleString("nl-NL")} doel`;
 }
 
-initMap();
-
 // Year selector
 const yearBtns = document.querySelectorAll(".year-btn");
 yearBtns.forEach(btn => {
@@ -33,6 +31,20 @@ yearBtns.forEach(btn => {
   };
 });
 
+// Lock selects — event delegation so it works after re-renders
+document.getElementById("timeline").addEventListener("change", e => {
+  if (!e.target.classList.contains("lock-select")) return;
+  const { id } = e.target.dataset;
+  const month = e.target.value;
+  if (month) {
+    state.locks[id] = +month;
+  } else {
+    delete state.locks[id];
+  }
+  updateApp("lock");
+});
+
 document.getElementById("generate").onclick = () => updateApp("manual");
 
+initMap();
 updateApp("init");
