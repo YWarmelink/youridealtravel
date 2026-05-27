@@ -4,6 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Travel OS</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="styles.css">
 </head>
@@ -18,7 +19,7 @@
       </div>
     </div>
     <div class="header-right">
-      <span class="sync-status" id="sync-status">No data yet</span>
+      <span class="sync-status" id="sync-status">No data — click Sync</span>
       <button id="sync-btn" class="sync-btn">⟳ Sync from Sheets</button>
     </div>
   </header>
@@ -43,6 +44,19 @@
       </div>
 
       <div class="settings-section">
+        <div class="section-label">Travel style</div>
+        <select class="setting-select" id="travel-style">
+          <option value="Backpack">🎒 Backpack — budget travel</option>
+          <option value="Standard" selected>🧳 Standard — mid-range</option>
+          <option value="Comfort">🏨 Comfort — premium hotels</option>
+          <option value="Luxury">✨ Luxury — high-end</option>
+        </select>
+        <div class="style-hint" id="style-cost-hint">+0% on daily costs</div>
+      </div>
+
+      <div class="settings-divider"></div>
+
+      <div class="settings-section">
         <div class="section-label">Max countries per trip</div>
         <div class="btn-group">
           <button class="group-btn" data-val="1" id="max-1">1 country</button>
@@ -65,6 +79,62 @@
         </div>
       </div>
 
+      <div class="settings-divider"></div>
+
+      <div class="settings-section">
+        <div class="section-label">Travel period</div>
+        <div class="month-row">
+          <div class="month-field">
+            <div class="month-label">From</div>
+            <select class="setting-select" id="start-month">
+              <option value="1">January</option>
+              <option value="2">February</option>
+              <option value="3">March</option>
+              <option value="4">April</option>
+              <option value="5" selected>May</option>
+              <option value="6">June</option>
+              <option value="7">July</option>
+              <option value="8">August</option>
+              <option value="9">September</option>
+              <option value="10">October</option>
+              <option value="11">November</option>
+              <option value="12">December</option>
+            </select>
+          </div>
+          <div class="month-field">
+            <div class="month-label">To</div>
+            <select class="setting-select" id="end-month">
+              <option value="1">January</option>
+              <option value="2">February</option>
+              <option value="3">March</option>
+              <option value="4" selected>April</option>
+              <option value="5">May</option>
+              <option value="6">June</option>
+              <option value="7">July</option>
+              <option value="8">August</option>
+              <option value="9">September</option>
+              <option value="10">October</option>
+              <option value="11">November</option>
+              <option value="12">December</option>
+            </select>
+          </div>
+        </div>
+        <div class="style-hint" id="period-hint">12 months — maximum flexibility</div>
+      </div>
+
+      <div class="settings-section">
+        <div class="section-label">Season preference</div>
+        <select class="setting-select" id="season-pref">
+          <option value="Low">Low season — cheaper flights</option>
+          <option value="Mid" selected>Mid season — balanced</option>
+          <option value="High">High season — peak conditions</option>
+          <option value="No">No preference</option>
+        </select>
+        <div class="style-hint" id="season-hint">+0% on flight costs</div>
+      </div>
+
+      <div class="settings-divider"></div>
+
       <div class="settings-section">
         <div class="section-label">Travel style weights</div>
         <div id="style-sliders"></div>
@@ -72,9 +142,14 @@
 
       <details class="adv-section">
         <summary class="adv-summary">⚖ Ranking weights</summary>
-        <div class="adv-sliders" id="rank-sliders"></div>
+        <div id="rank-sliders"></div>
         <p class="adv-hint">Controls how much each factor counts in the final ranking.</p>
       </details>
+
+      <!-- Apply button — sticky at bottom -->
+      <div class="apply-wrap">
+        <button id="apply-btn" class="apply-btn">Apply changes</button>
+      </div>
 
     </aside>
 
@@ -89,14 +164,23 @@
           <button class="tab" data-filter="combo">✈ Combos</button>
           <button class="tab" data-filter="lowfatigue">😌 Low fatigue</button>
         </div>
-        <span class="result-count" id="result-count"></span>
+        <div class="results-right">
+          <button class="map-toggle-btn" id="map-toggle">🗺 Hide map</button>
+          <span class="result-count" id="result-count"></span>
+        </div>
       </div>
 
+      <!-- World map -->
+      <div class="map-wrapper" id="map-wrapper">
+        <div id="world-map"></div>
+      </div>
+
+      <!-- Trip grid -->
       <div id="trip-grid" class="trip-grid">
         <div class="empty-placeholder">
           <div class="placeholder-icon">🌍</div>
           <div class="placeholder-title">Sync to load trip data</div>
-          <div class="placeholder-sub">Click "Sync from Sheets" to load your destinations</div>
+          <div class="placeholder-sub">Click "Sync from Sheets" to load your destinations and start planning</div>
           <button class="sync-btn-large" id="sync-btn-2">⟳ Sync from Sheets</button>
         </div>
       </div>
@@ -104,6 +188,7 @@
     </main>
   </div>
 
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script src="js/app.js"></script>
 </body>
 </html>

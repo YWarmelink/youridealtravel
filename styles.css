@@ -408,6 +408,109 @@ body {
 .fat-mid     { background: #fefce8; color: #92400e; }
 .fat-high    { background: #fee2e2; color: #991b1b; }
 
+/* ── Select ──────────────────────────────────────────────── */
+.setting-select {
+  width: 100%;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 7px 10px;
+  font-size: 12px;
+  color: #0f172a;
+  font-family: inherit;
+  background: #f8fafc;
+  cursor: pointer;
+  appearance: none;
+  -webkit-appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%2394a3b8'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 10px center;
+  padding-right: 28px;
+}
+.setting-select:focus { outline: none; border-color: #3b82f6; box-shadow: 0 0 0 3px rgba(59,130,246,0.1); background-color: #fff; }
+
+/* ── Style hint ──────────────────────────────────────────── */
+.style-hint { font-size: 11px; color: #94a3b8; font-weight: 500; }
+
+/* ── Divider ─────────────────────────────────────────────── */
+.settings-divider { height: 1px; background: #f1f5f9; margin: 0 -14px; }
+
+/* ── Month row ───────────────────────────────────────────── */
+.month-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.month-field { display: flex; flex-direction: column; gap: 4px; }
+.month-label { font-size: 10px; color: #94a3b8; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; }
+
+/* ── Apply button ────────────────────────────────────────── */
+.apply-wrap {
+  position: sticky;
+  bottom: 0;
+  padding: 12px 0 4px;
+  background: #fff;
+  border-top: 1px solid #f1f5f9;
+}
+
+.apply-btn {
+  width: 100%;
+  background: #e2e8f0;
+  color: #94a3b8;
+  border: none;
+  border-radius: 10px;
+  padding: 11px;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  font-family: inherit;
+  transition: all 0.2s;
+}
+.apply-btn.has-pending {
+  background: linear-gradient(135deg, #3b82f6, #6366f1);
+  color: #fff;
+  box-shadow: 0 2px 12px rgba(59,130,246,0.35);
+  animation: pulse-apply 2s ease-in-out infinite;
+}
+@keyframes pulse-apply {
+  0%, 100% { box-shadow: 0 2px 12px rgba(59,130,246,0.35); }
+  50%       { box-shadow: 0 4px 22px rgba(59,130,246,0.55); }
+}
+
+/* ── Map ─────────────────────────────────────────────────── */
+.map-wrapper {
+  border-radius: 12px;
+  overflow: hidden;
+  margin-bottom: 20px;
+  border: 1px solid #e2e8f0;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.05);
+}
+
+#world-map {
+  height: 220px;
+  width: 100%;
+  background: #dbeafe;
+}
+
+/* ── Results right ───────────────────────────────────────── */
+.results-right {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+}
+
+/* ── Map toggle button ───────────────────────────────────── */
+.map-toggle-btn {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 6px 12px;
+  font-size: 12px;
+  font-weight: 500;
+  color: #64748b;
+  cursor: pointer;
+  font-family: inherit;
+  transition: all 0.15s;
+  white-space: nowrap;
+}
+.map-toggle-btn:hover { border-color: #3b82f6; color: #3b82f6; }
+
 /* ── Responsive ──────────────────────────────────────────── */
 @media (max-width: 800px) {
   .app-layout { grid-template-columns: 1fr; }
