@@ -1,60 +1,109 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
   <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Travel OS</title>
-
-  <!-- Leaflet -->
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="styles.css">
 </head>
-
 <body>
 
-<div class="app">
-
-  <aside class="panel">
-    <h2>Travel OS</h2>
-    <p class="panel-sub">Persoonlijke reisoptimalisatie</p>
-
-    <div class="section-label">Jaar</div>
-    <div class="year-buttons">
-      <button class="year-btn" data-year="2026">2026</button>
-      <button class="year-btn" data-year="2027">2027</button>
-      <button class="year-btn" data-year="2028">2028</button>
+  <header class="app-header">
+    <div class="header-brand">
+      <span class="header-logo">🌍</span>
+      <div>
+        <h1>Travel OS</h1>
+        <span class="header-sub">Live trip calculator</span>
+      </div>
     </div>
-
-    <div class="budget-block">
-      <div id="budgetRange" class="budget-range"></div>
-      <div id="budgetTarget" class="budget-target"></div>
+    <div class="header-right">
+      <span class="sync-status" id="sync-status">No data yet</span>
+      <button id="sync-btn" class="sync-btn">⟳ Sync from Sheets</button>
     </div>
+  </header>
 
-    <div class="class-legend">
-      <div class="section-label">Klassen</div>
-      <div class="legend-row"><span class="dot dot-c1"></span> Class 1 — High Value</div>
-      <div class="legend-row"><span class="dot dot-c2"></span> Class 2 — Mid Premium</div>
-      <div class="legend-row"><span class="dot dot-c3"></span> Class 3 — Bucket List</div>
-    </div>
+  <div class="app-layout">
 
-    <div class="map-legend">
-      <div class="legend-row"><span class="dot dot-plan"></span> In beste plan</div>
-      <div class="legend-row"><span class="dot dot-alt"></span> In een alternatief</div>
-    </div>
+    <!-- ── Settings sidebar ── -->
+    <aside class="settings-panel">
 
-    <button id="generate">Genereer plannen</button>
-  </aside>
+      <div class="settings-section">
+        <div class="section-label">Budget</div>
+        <div class="big-value" id="budget-display">€6,000</div>
+        <input type="range" class="range-input" id="budget-slider" min="500" max="15000" step="100" value="6000">
+        <input type="number" class="num-input" id="budget-number" min="500" max="15000" value="6000">
+      </div>
 
-  <main>
-    <div id="map"></div>
-    <section id="timeline"></section>
-    <div id="picker"></div>
-  </main>
+      <div class="settings-section">
+        <div class="section-label">Trip duration</div>
+        <div class="big-value" id="days-display">14 days</div>
+        <input type="range" class="range-input" id="days-slider" min="5" max="30" step="1" value="14">
+        <input type="number" class="num-input" id="days-number" min="5" max="30" value="14">
+      </div>
 
-</div>
+      <div class="settings-section">
+        <div class="section-label">Max countries per trip</div>
+        <div class="btn-group">
+          <button class="group-btn" data-val="1" id="max-1">1 country</button>
+          <button class="group-btn active" data-val="2" id="max-2">Up to 2</button>
+        </div>
+      </div>
 
-<script type="module" src="./js/app.js"></script>
+      <div class="settings-section">
+        <div class="toggles">
+          <label class="toggle-row">
+            <input type="checkbox" id="avoid-long">
+            <span class="toggle-track"></span>
+            <span>Avoid long flights</span>
+          </label>
+          <label class="toggle-row">
+            <input type="checkbox" id="prefer-combos" checked>
+            <span class="toggle-track"></span>
+            <span>Include combo trips</span>
+          </label>
+        </div>
+      </div>
 
+      <div class="settings-section">
+        <div class="section-label">Travel style weights</div>
+        <div id="style-sliders"></div>
+      </div>
+
+      <details class="adv-section">
+        <summary class="adv-summary">⚖ Ranking weights</summary>
+        <div class="adv-sliders" id="rank-sliders"></div>
+        <p class="adv-hint">Controls how much each factor counts in the final ranking.</p>
+      </details>
+
+    </aside>
+
+    <!-- ── Results ── -->
+    <main class="results-panel">
+
+      <div class="results-top">
+        <div class="filter-tabs">
+          <button class="tab active" data-filter="top10">🏆 Top 10</button>
+          <button class="tab" data-filter="budget">💰 Cheapest</button>
+          <button class="tab" data-filter="adventure">🧗 Adventure</button>
+          <button class="tab" data-filter="combo">✈ Combos</button>
+          <button class="tab" data-filter="lowfatigue">😌 Low fatigue</button>
+        </div>
+        <span class="result-count" id="result-count"></span>
+      </div>
+
+      <div id="trip-grid" class="trip-grid">
+        <div class="empty-placeholder">
+          <div class="placeholder-icon">🌍</div>
+          <div class="placeholder-title">Sync to load trip data</div>
+          <div class="placeholder-sub">Click "Sync from Sheets" to load your destinations</div>
+          <button class="sync-btn-large" id="sync-btn-2">⟳ Sync from Sheets</button>
+        </div>
+      </div>
+
+    </main>
+  </div>
+
+  <script src="js/app.js"></script>
 </body>
 </html>
