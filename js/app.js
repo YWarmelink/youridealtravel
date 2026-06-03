@@ -92,9 +92,9 @@ const STYLES = [
 ];
 
 const RANK_WEIGHTS = [
-  { uKey: 'prefWeight',    label: 'Travel style', default: 8, min: 0, max: 10, step: 1 },
-  { uKey: 'budgetWeight',  label: 'Budget fit',   default: 6, min: 0, max: 10, step: 1 },
-  { uKey: 'fatigueWeight', label: 'Low fatigue',  default: 2, min: 0, max: 10, step: 1 },
+  { uKey: 'prefWeight',    label: 'Travel style', default: 8,  min: 0, max: 10, step: 1 },
+  { uKey: 'budgetWeight',  label: 'Budget fit',   default: 10, min: 0, max: 10, step: 1 },
+  { uKey: 'fatigueWeight', label: 'Low fatigue',  default: 2,  min: 0, max: 10, step: 1 },
 ];
 
 const FLAGS = {
@@ -139,7 +139,7 @@ let U = {
   travelers: 1,
   sharedAccom: true,
   adventure: 7, food: 10, nature: 8, beach: 6, nightlife: 3, culture: 9,
-  prefWeight: 8, budgetWeight: 6, fatigueWeight: 2,
+  prefWeight: 8, budgetWeight: 10, fatigueWeight: 2,
 };
 
 // Draft settings — updated by all inputs; applied to U on Apply click
@@ -546,8 +546,11 @@ function rankCalced(calced) {
   const scored = calced.map((c, i) => {
     const base = U.prefWeight * pctPref[i] + U.budgetWeight * pctBudget[i] +
                  U.fatigueWeight * pctFat[i] + seasonW * pctSeason[i];
-    // Overstay penalty: score * 1/(1+overstay) — Brunei 21d (overstay=2.5) → ×0.29
-    const finalScore = base * (1 / (1 + (c.rawOverstay || 0)));
+    // Overstay penalty: score × 1/(1+overstay)
+    // Combo bonus: +8% voor trips met 2 landen (beloont diversiteit)
+    const overstayFactor = 1 / (1 + (c.rawOverstay || 0));
+    const comboFactor    = c.hasB ? 1.08 : 1.0;
+    const finalScore     = base * overstayFactor * comboFactor;
     return { ...c, pctPref: pctPref[i], pctBudget: pctBudget[i], finalScore };
   });
   scored.sort((a, b) => b.finalScore - a.finalScore);

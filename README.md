@@ -83,9 +83,15 @@ finalScore = (prefWeight × pctPref
            + fatigueWeight × pctFatigue
            + seasonWeight × pctSeason)
            × 1/(1 + overstay)
+           × comboFactor
 ```
 
-Alle pct-onderdelen zijn percentielrangschikkingen (0–100). `seasonWeight` volgt uit `SEASON_WEIGHT[U.seasonPref]` (High=2.0, Mid=1.0, Low=0.3, No=0.0). De `overstay` multiplier verlaagt de score als de trip langer duurt dan `max_days` voor dat land.
+- Alle `pct*`-onderdelen zijn percentielrangschikkingen (0–100)
+- `seasonWeight` = `SEASON_WEIGHT[U.seasonPref]` (High=2.0, Mid=1.0, Low=0.3, No=0.0)
+- `overstay` multiplier = straf voor te lang in één land (zie dagverdeling)
+- `comboFactor` = 1.08 voor combo trips (2 landen), 1.0 voor single — beloont diversiteit
+
+**Standaard ranking weights:** Travel style=8, Budget fit=10, Low fatigue=2. Budget fit op 10 zorgt dat trips significant boven budget automatisch laag scoren.
 
 `rankCalced()` is een gedeelde helper die door zowel de normale ranking als de 🎯 Ideal trip filter gebruikt wordt.
 
