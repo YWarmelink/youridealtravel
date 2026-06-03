@@ -93,7 +93,7 @@ const STYLES = [
 
 const RANK_WEIGHTS = [
   { uKey: 'prefWeight',    label: 'Travel style', default: 8,  min: 0, max: 10, step: 1 },
-  { uKey: 'budgetWeight',  label: 'Budget fit',   default: 10, min: 0, max: 10, step: 1 },
+  { uKey: 'budgetWeight',  label: 'Budget fit',   default: 5,  min: 0, max: 10, step: 1 },
   { uKey: 'fatigueWeight', label: 'Low fatigue',  default: 2,  min: 0, max: 10, step: 1 },
 ];
 
@@ -139,7 +139,7 @@ let U = {
   travelers: 1,
   sharedAccom: true,
   adventure: 7, food: 10, nature: 8, beach: 6, nightlife: 3, culture: 9,
-  prefWeight: 8, budgetWeight: 10, fatigueWeight: 2,
+  prefWeight: 8, budgetWeight: 5, fatigueWeight: 2,
 };
 
 // Draft settings — updated by all inputs; applied to U on Apply click
@@ -536,22 +536,34 @@ function calcTripIdeal(t) {
   };
 }
 
+// Vaste 0-100 budgetscore (geen percentiel):
+// 50-100 = binnen budget (meer ruimte = hoger)
+// 0-50   = boven budget, zachte kwadratische penalty
+// Reageert volledig op budgetWeight slider — weight=0 = budget telt niet
+function calcBudgetScore(cost, budget) {
+  if (cost <= budget) {
+    return 50 + (budget - cost) / budget * 50;
+  }
+  const overshoot = (cost - budget) / budget;
+  return Math.max(0, 50 * Math.pow(1 - overshoot, 2));
+}
+
 function rankCalced(calced) {
   if (calced.length === 0) return [];
   const pctPref   = pctRanks(calced.map(c => c.rawPref));
-  const pctBudget = pctRanks(calced.map(c => c.rawBudget));
   const pctFat    = pctRanks(calced.map(c => c.rawFatigue));
   const pctSeason = pctRanks(calced.map(c => c.rawSeason));
   const seasonW   = SEASON_WEIGHT[U.seasonPref] ?? 1.0;
   const scored = calced.map((c, i) => {
-    const base = U.prefWeight * pctPref[i] + U.budgetWeight * pctBudget[i] +
-                 U.fatigueWeight * pctFat[i] + seasonW * pctSeason[i];
-    // Overstay penalty: score × 1/(1+overstay)
-    // Combo bonus: +8% voor trips met 2 landen (beloont diversiteit)
+    const budgetScore = calcBudgetScore(c.cost, U.budget);
+    const base = U.prefWeight  * pctPref[i]   +
+                 U.budgetWeight * budgetScore   +
+                 U.fatigueWeight * pctFat[i]   +
+                 seasonW        * pctSeason[i];
     const overstayFactor = 1 / (1 + (c.rawOverstay || 0));
     const comboFactor    = c.hasB ? 1.08 : 1.0;
     const finalScore     = base * overstayFactor * comboFactor;
-    return { ...c, pctPref: pctPref[i], pctBudget: pctBudget[i], finalScore };
+    return { ...c, pctPref: pctPref[i], budgetScore, finalScore };
   });
   scored.sort((a, b) => b.finalScore - a.finalScore);
   const n = scored.length;
