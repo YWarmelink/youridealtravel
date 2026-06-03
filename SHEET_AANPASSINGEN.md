@@ -1,123 +1,94 @@
-# Sheet aanpassingen
+# Sheet aanpassingen — to-do lijst
 
-Dit document beschrijft wat er in de Google Sheet nog aangepast of opgeschoond kan worden, nu de web app veel dingen anders berekent dan de sheet deed. De website blijft gewoon werken — dit is puur voor overzicht en sheet-onderhoud.
-
----
-
-## Wat de app NIET meer gebruikt uit de sheet
-
-Deze kolommen worden door de app genegeerd. Ze mogen blijven staan (de sheet herberekent ze gewoon), maar je hoeft ze niet meer kloppend te houden voor de website.
-
-### TRIP_ENGINE tab
-
-| Kolom | Waarom niet meer nodig |
-|-------|------------------------|
-| `daily_cost_a`, `daily_cost_b` | App pakt dagkosten nu direct uit COUNTRIES tab op basis van travel style |
-| `flight_nl_to_a`, `flight_a_to_b`, `flight_b_to_nl`, `total_flight_cost` | App berekent vliegkosten per leg uit FLIGHTS tab op basis van start maand + seizoen |
-| `cost_min`, `cost_ideal`, `cost_max` | App herberekent zelf met U.days en reizigers |
-| `chosen_scenario`, `chosen_days_a`, `chosen_days_b`, `chosen_cost` | App bepaalt dagverdeling zelf (geen max cap meer) |
-| `season_score_a`, `season_score_b`, `total_season_score` | App berekent seizoensscore dynamisch uit COUNTRIES tab |
-| `wishlist_bonus_a`, `wishlist_bonus_b`, `total_wishlist_bonus` | Wishlist is verwijderd uit de ranking |
-| `region_bonus` | Region bonus is verwijderd uit de ranking |
-| `cost_score`, `cost_penalty`, `budget_pressure_score` | App herberekent budgetscore zelf |
-| `fatigue_score` | App gebruikt alleen `fatigue_penalty` |
-| `percentile_*` kolommen | App berekent percentielranking zelf |
-| `final_trip_score`, `trip_ranking_score`, `decision_score` | App heeft eigen rankingformule |
-| `budget_fit`, `cost_fit` | App bepaalt dit zelf op basis van U.budget |
+Dit is een persoonlijke to-do lijst met wat er nog in de Google Sheet aangepast kan worden zodat die beter aansluit bij de web app. De website werkt al correct — dit is puur voor het opschonen en uitbreiden van de sheet.
 
 ---
 
-## Wat de app WEL nog nodig heeft uit TRIP_ENGINE
+## SETTINGS tab — kan genegeerd worden
 
-Deze kolommen moeten kloppen als je een nieuw land of combo toevoegt.
-
-| Kolom | Gebruik |
-|-------|---------|
-| `trip_key` | Unieke ID per trip |
-| `country_a`, `country_b` | Landnamen (moeten exact overeenkomen met COUNTRIES tab) |
-| `route_key` | Naam van de route (bijv. Japan-Taiwan) |
-| `min_days_a`, `min_days_b` | Minimaal aantal dagen om trip zinvol te maken (hard filter) |
-| `ideal_days_a`, `ideal_days_b` | Beste tripduur per land — gebruikt voor dagverdeling in combos en de 🎯 Ideal trip filter |
-| `max_days_a`, `max_days_b` | Maximaal zinvolle verblijfsduur — gebruikt voor overstay penalty in ranking |
-| `fatigue_penalty` | Vermoeidheidscore (hogere waarde = meer vermoeiend) |
-| `adventure_score`, `food_score`, `nature_score`, `beach_score`, `nightlife_score`, `culture_score` | Stijlscores per trip — gebruikt in ranking en filters |
-| `trip_type` | Niet actief gebruikt maar handig voor overzicht |
+De app laadt de SETTINGS tab **niet meer in**. De JS-defaults in `app.js` zijn altijd het startpunt. De SETTINGS tab heeft geen effect op de website — je hoeft die niet bij te houden.
 
 ---
 
-## Wat de app nodig heeft uit COUNTRIES tab (GID 2119597216)
+## Kolommen in TRIP_ENGINE die niet meer gebruikt worden
 
-Dit is de nieuwe primaire bron voor dagkosten en seizoenen. Elke keer dat je een nieuw land toevoegt, moeten deze kolommen ingevuld zijn.
+Deze kolommen worden door de app volledig genegeerd. Ze kunnen blijven staan maar je hoeft ze niet meer kloppend te houden.
 
-| Kolom | Gebruik |
-|-------|---------|
-| `country` | Naam — moet exact overeenkomen met `country_a`/`country_b` in TRIP_ENGINE |
-| `daily_cost_backpack` | Dagkosten Backpack stijl |
-| `daily_cost_mid` | Dagkosten Standard stijl |
-| `daily_cost_premium` | Dagkosten Comfort stijl (Luxury = premium × 1.45) |
-| `low_season` | Kommalijst van maanden in laagseizoen (bijv. `Nov,Dec,Jan`) |
-| `mid_season` | Kommalijst van maanden in midden seizoen |
-| `high_season` | Kommalijst van maanden in hoogseizoen |
-| `flight_key` | Routekey vanuit NL (bijv. `NL-Japan`) — moet overeenkomen met FLIGHTS tab |
-| `fatigue` | Vermoeidheid per land (wordt gebruikt door TRIP_ENGINE) |
-| Stijlscores | `culture`, `nature`, `beach`, `food`, `nightlife`, `adventure` |
-
-**Let op maandnotatie:** gebruik altijd 3-letter afkortingen gescheiden door komma's: `Jan,Feb,Mar` etc. Geen spaties na de komma.
+- `daily_cost_a`, `daily_cost_b` — app pakt dagkosten uit COUNTRIES tab
+- `flight_nl_to_a`, `flight_a_to_b`, `flight_b_to_nl`, `total_flight_cost` — app berekent vliegkosten uit FLIGHTS tab
+- `cost_min`, `cost_ideal`, `cost_max`, `chosen_scenario`, `chosen_days_a/b`, `chosen_cost` — app herberekent zelf
+- `season_score_a/b`, `total_season_score` — app berekent seizoensscore dynamisch
+- `wishlist_bonus_a/b`, `total_wishlist_bonus` — wishlist verwijderd uit ranking
+- `region_bonus` — region bonus verwijderd uit ranking
+- `cost_score`, `cost_penalty`, `budget_pressure_score`, `fatigue_score` — app herberekent
+- Alle `percentile_*` kolommen — app berekent eigen percentielranking
+- `final_trip_score`, `trip_ranking_score`, `decision_score` — app heeft eigen rankingformule
+- `budget_fit`, `cost_fit` — app bepaalt dit zelf
 
 ---
 
-## Wat de app nodig heeft uit FLIGHTS tab (GID 99695727)
+## Kolommen die WEL kloppen moeten bij nieuwe landen/combos
 
-Elke route die voorkomt in TRIP_ENGINE moet hier staan met seizoenskosten.
+### TRIP_ENGINE
 
-| Kolom | Gebruik |
-|-------|---------|
-| `route_key` | Bijv. `NL-Japan`, `Japan-Taiwan`, `Taiwan-NL` |
-| `low_season_cost` | Vliegkosten laagseizoen |
-| `mid_season_cost` | Vliegkosten midden seizoen |
-| `high_season_cost` | Vliegkosten hoogseizoen |
+| Kolom | Waarom belangrijk |
+|-------|-------------------|
+| `trip_key` | Unieke ID — wordt gebruikt als referentie overal |
+| `country_a`, `country_b` | Exact gelijk aan naam in COUNTRIES tab |
+| `min_days_a`, `min_days_b` | Hard filter — trip is niet haalbaar als `U.days < min` |
+| `ideal_days_a`, `ideal_days_b` | Dagverdeling bij combos + 🎯 Ideal trip filter |
+| `max_days_a`, `max_days_b` | **Overstay penalty** — te lange verblijfsduur verlaagt score |
+| `fatigue_penalty` | Vermoeidheidscomponent in ranking |
+| `adventure_score`, `food_score`, `nature_score`, `beach_score`, `nightlife_score`, `culture_score` | Stijlscores in ranking en filters |
 
-Voor elke combo-trip (A→B) moet je drie routes hebben:
-- `NL-{country_a}` en `{country_a}-NL`
-- `{country_a}-{country_b}` en `{country_b}-{country_a}`
-- `{country_b}-NL` en `NL-{country_b}`
+### COUNTRIES tab (GID 2119597216)
 
----
+| Kolom | Waarom belangrijk |
+|-------|-------------------|
+| `country` | Moet exact matchen met `country_a/b` in TRIP_ENGINE |
+| `daily_cost_backpack` | Dagkosten voor Backpack stijl |
+| `daily_cost_mid` | Dagkosten voor Standard stijl |
+| `daily_cost_premium` | Dagkosten voor Comfort stijl (Luxury = premium × 1.45) |
+| `low_season`, `mid_season`, `high_season` | Seizoensberekening voor vliegkosten én seizoensscore — gebruik 3-letter afkortingen: `Jan,Feb,Mar` |
+| `flight_key` | Routekey vanuit NL (bijv. `NL-Japan`) — moet bestaan in FLIGHTS tab |
+| `fatigue` | Vermoeidheid per land |
+| Stijlscores | `adventure`, `food`, `nature`, `beach`, `nightlife`, `culture` |
 
-## Nieuwe landen toevoegen — checklist
+### FLIGHTS tab (GID 99695727)
 
-1. **COUNTRIES tab:** voeg rij toe met alle vereiste kolommen (dagkosten, seizoenen, scores, flight_key)
-2. **FLIGHTS tab:** voeg NL↔land routes toe met seizoenskosten
-3. **TRIP_ENGINE tab:** voeg single-trip rij toe (met min/ideal/max days, scores, fatigue)
-4. **TRIP_ENGINE tab (optioneel):** voeg combo-rijen toe met landen die geografisch combineerbaar zijn
-5. **FLIGHTS tab:** voeg inter-land routes toe voor nieuwe combos
-6. **FILTER_ENGINE tab:** voeg filterrijen toe voor alle nieuwe trips (is_intercontinental, etc.)
-7. **App:** klik Sync — app pikt alles automatisch op
+| Kolom | Waarom belangrijk |
+|-------|-------------------|
+| `route_key` | Bijv. `NL-Japan`, `Japan-NL`, `Japan-Taiwan` |
+| `low_season_cost`, `mid_season_cost`, `high_season_cost` | Vliegkosten per seizoen |
 
----
+Voor elke nieuwe combo-trip heb je nodig:
+- `NL-{land_a}` en `{land_a}-NL`
+- `{land_a}-{land_b}` en `{land_b}-{land_a}`
+- `{land_b}-NL` en `NL-{land_b}`
 
-## FILTER_ENGINE tab — nog steeds actief gebruikt
+### FILTER_ENGINE tab (GID 431668285)
 
-| Kolom | Gebruik |
-|-------|---------|
-| `trip_id` | Moet overeenkomen met `trip_key` in TRIP_ENGINE |
+| Kolom | Waarom belangrijk |
+|-------|-------------------|
+| `trip_id` | Moet matchen met `trip_key` in TRIP_ENGINE |
 | `is_intercontinental` | `TRUE`/`FALSE` — gebruikt voor "Avoid long flights" filter |
-| `country_count` | Niet actief gebruikt (app telt zelf) |
-
-Overige kolommen in FILTER_ENGINE worden door de app niet gebruikt.
 
 ---
 
-## SETTINGS tab — gedeeltelijk nog actief
+## Checklist bij nieuwe landen toevoegen
 
-De app laadt SETTINGS bij Sync en vult de startwaarden in. De gebruiker kan dit overschrijven via de UI.
+1. **COUNTRIES tab** — rij toevoegen met dagkosten, seizoenen, stijlscores, flight_key
+2. **FLIGHTS tab** — NL↔land routes met seizoenskosten
+3. **TRIP_ENGINE tab** — single-trip rij met min/ideal/max days, scores, fatigue
+4. **TRIP_ENGINE tab** *(optioneel)* — combo-rijen met logische combinaties
+5. **FLIGHTS tab** *(optioneel)* — inter-land routes voor nieuwe combos
+6. **FILTER_ENGINE tab** — rijen voor alle nieuwe trips met `is_intercontinental`
+7. **App** — klik Sync, alles wordt automatisch opgepikt
 
-**Nog actief ingeladen:**
-- `Budget`, `Travel_style`, `Start_Month`, `End_Month`, `Season_Preference_(Low/Mid/High/No)`
-- Alle stijlscores: `Culture`, `Nature`, `Beach`, `Food`, `Nightlife`, `Adventure`
-- Rankingweights: `Preference_Weight`, `Budget_Pressure_Weight`, `Fatigue_Weight`
+---
 
-**Niet meer actief:**
-- `Priority_Weight` (region bonus verwijderd)
-- `Wishlist_Weight` (wishlist verwijderd)
-- `Available_PTO_Days`, `Max_Countries_per_Trip`, `Prefer_Combos`, `Avoid_Long_Flights` (worden niet ingeladen)
+## Aandachtspunten voor bestaande data
+
+- **max_days** is nu belangrijk voor de overstay penalty — controleer of de waarden realistisch zijn. Brunei max 6 dagen, Japan max 24 dagen etc. Een te lage max_days geeft een grote scorestraf bij 21-daagse trips.
+- **ideal_days** worden gebruikt voor de 🎯 Ideal trip filter — zorg dat deze de echte "beste" tripduur per land weergeven.
+- **Seizoensmaanden** in COUNTRIES moeten alle 12 maanden dekken per land (low + mid + high samen = 12). Ontbrekende maanden vallen terug op 'mid'.
