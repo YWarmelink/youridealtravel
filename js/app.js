@@ -448,26 +448,26 @@ function calcTrip(t) {
   }
   const flight = flightPerPerson * U.travelers;
 
-  const minA = num(t.min_days_a), maxA = num(t.max_days_a), idealA = num(t.ideal_days_a);
+  const minA = num(t.min_days_a), idealA = num(t.ideal_days_a);
   let daysA, daysB;
 
   if (hasB) {
-    const minB = num(t.min_days_b), maxB = num(t.max_days_b), idealB = num(t.ideal_days_b);
+    const minB = num(t.min_days_b), idealB = num(t.ideal_days_b);
     const minTotal = minA + minB;
     if (U.days < minTotal) return { _t: t, feasible: false, reason: `Needs ≥${minTotal} days` };
 
+    // Distribute days by ideal ratio — no max cap, user duration is the ceiling
     const totalIdeal = idealA + idealB;
     const ratioA     = totalIdeal > 0 ? idealA / totalIdeal : 0.5;
-    daysA = clamp(Math.round(U.days * ratioA), minA, maxA);
-    daysB = clamp(U.days - daysA, minB, maxB);
-    if (daysA + daysB < U.days) {
-      const extra = U.days - daysA - daysB;
-      if (daysA < maxA) daysA = clamp(daysA + extra, minA, maxA);
-      else              daysB = clamp(daysB + extra, minB, maxB);
+    daysA = Math.max(minA, Math.round(U.days * ratioA));
+    daysB = U.days - daysA;
+    if (daysB < minB) {
+      daysB = minB;
+      daysA = Math.max(minA, U.days - daysB);
     }
   } else {
     if (U.days < minA) return { _t: t, feasible: false, reason: `Needs ≥${minA} days` };
-    daysA = clamp(U.days, minA, maxA);
+    daysA = U.days;  // always use the full trip duration
     daysB = 0;
   }
 
