@@ -6,6 +6,8 @@ const GID = {
   TRIP_ENGINE:   '2103068682',
   FILTER_ENGINE: '431668285',
   SETTINGS:      '0',
+  COUNTRIES:     '2119597216',
+  FLIGHTS:       '99695727',
 };
 const CACHE_KEY = 'travelos_v2_data';
 const SYNC_KEY  = 'travelos_v2_synced';
@@ -17,11 +19,21 @@ function csvUrl(gid) {
 // ─────────────────────────────────────────────────────────────
 // CONSTANTS
 // ─────────────────────────────────────────────────────────────
+
+// Fallback multipliers used when country data isn't loaded yet
 const STYLE_MULT = { Backpack: 1.0, Standard: 1.35, Comfort: 1.80, Luxury: 2.60 };
 
-// Flight cost modifier per calendar month (relative to baseline)
-// Index 1=Jan … 12=Dec; index 0 unused
-const MONTH_FLIGHT_MULT = [0, -0.10, -0.12, -0.05, 0.02, 0.05, 0.12, 0.15, 0.15, 0.08, 0.02, -0.08, 0.10];
+// Maps travel style to the column name in the countries sheet
+const STYLE_COL = {
+  Backpack: 'daily_cost_backpack',
+  Standard: 'daily_cost_mid',
+  Comfort:  'daily_cost_premium',
+  Luxury:   'daily_cost_premium',  // sheet has no luxury column; use premium + multiplier
+};
+const LUXURY_MULT = 1.45;  // ~same ratio as original Luxury/Comfort (2.60/1.80)
+
+// Month number → 3-letter name (matches season strings in countries sheet)
+const MONTH_ABBR = ['', 'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
 // Season preference → weight on total_season_score in ranking
 const SEASON_WEIGHT = { High: 2.0, Mid: 1.0, Low: 0.3, No: 0.0 };
@@ -106,6 +118,8 @@ const FLAGS = {
 // ─────────────────────────────────────────────────────────────
 let rawTrips      = [];
 let filterMap     = {};
+let countryData   = {};  // { 'Japan': { daily_cost_backpack, daily_cost_mid, daily_cost_premium, low_season, ... } }
+let flightData    = {};  // { 'NL-Japan': { low, mid, high }, ... }
 let currentFilter = 'top10';
 let _lastRanked   = [];
 let _leafletMap   = null;
@@ -185,19 +199,28 @@ function applyChanges() {
 }
 
 function updateStyleHints() {
-  const styleTexts = { Backpack: '+0%', Standard: '+35%', Comfort: '+80%', Luxury: '+160%' };
+  const styleTexts = {
+    Backpack: 'Budget accommodation & local transport',
+    Standard: 'Mid-range hotels & transport',
+    Comfort:  'Premium hotels & better transport',
+    Luxury:   'High-end hotels & service (×1.45 on Comfort)',
+  };
   const sh = document.getElementById('style-cost-hint');
-  if (sh) sh.textContent = `${styleTexts[pendingU.travelStyle] || '0%'} on daily costs`;
+  if (sh) sh.textContent = styleTexts[pendingU.travelStyle] || '';
 
-  const seasonTexts = { High: '+15% on flights (peak)', Mid: 'no adjustment', Low: '-15% on flights (low)', No: 'no adjustment' };
+  const seasonTexts = {
+    High: 'Prioritises destinations in peak season',
+    Mid:  'Prioritises destinations in mid season',
+    Low:  'Prioritises destinations in low season',
+    No:   'Season not considered in ranking',
+  };
   const seH = document.getElementById('season-hint');
   if (seH) seH.textContent = seasonTexts[pendingU.seasonPref] || '';
 
-  const mult = monthWindowMult(pendingU.startMonth, pendingU.endMonth);
-  const pct  = Math.round((mult - 1) * 100);
-  const sign = pct >= 0 ? '+' : '';
+  const monthName = ['', 'January', 'February', 'March', 'April', 'May', 'June',
+                         'July', 'August', 'September', 'October', 'November', 'December'];
   const ph = document.getElementById('period-hint');
-  if (ph) ph.textContent = `${sign}${pct}% flight cost (based on selected months)`;
+  if (ph) ph.textContent = `Departure in ${monthName[pendingU.startMonth] || '?'} — flight costs reflect seasonal pricing`;
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -224,10 +247,12 @@ async function syncFromSheets() {
   if (btn) btn.disabled = true;
 
   try {
-    const [tripText, filterText, settingsText] = await Promise.all([
+    const [tripText, filterText, settingsText, countriesText, flightsText] = await Promise.all([
       fetch(csvUrl(GID.TRIP_ENGINE)).then(r => r.text()),
       fetch(csvUrl(GID.FILTER_ENGINE)).then(r => r.text()),
       fetch(csvUrl(GID.SETTINGS)).then(r => r.text()),
+      fetch(csvUrl(GID.COUNTRIES)).then(r => r.text()),
+      fetch(csvUrl(GID.FLIGHTS)).then(r => r.text()),
     ]);
 
     const trips = parseCSV(tripText).filter(t => t.trip_key && t.trip_key !== 'trip_key');
@@ -238,7 +263,15 @@ async function syncFromSheets() {
     const settings = {};
     settingsRows.forEach(r => { settings[r.setting_key] = r.setting_value; });
 
-    const payload = { trips, fMap, settings, synced: new Date().toISOString() };
+    const cData = {};
+    parseCSV(countriesText).filter(r => r.country).forEach(r => { cData[r.country] = r; });
+
+    const fData = {};
+    parseCSV(flightsText).filter(r => r.route_key).forEach(r => {
+      fData[r.route_key] = { low: num(r.low_season_cost), mid: num(r.mid_season_cost), high: num(r.high_season_cost) };
+    });
+
+    const payload = { trips, fMap, settings, cData, fData, synced: new Date().toISOString() };
     localStorage.setItem(CACHE_KEY, JSON.stringify(payload));
     localStorage.setItem(SYNC_KEY, payload.synced);
 
@@ -266,8 +299,10 @@ function loadFromCache() {
 }
 
 function applyCache(payload) {
-  rawTrips  = payload.trips;
-  filterMap = payload.fMap;
+  rawTrips    = payload.trips;
+  filterMap   = payload.fMap;
+  countryData = payload.cData || {};
+  flightData  = payload.fData || {};
 
   const s = payload.settings || {};
   if (s.Budget)                 U.budget      = parseInt(s.Budget)        || U.budget;
@@ -283,7 +318,8 @@ function applyCache(payload) {
   if (s.Wishlist_Weight)        U.wishWeight  = num(s.Wishlist_Weight);
   if (s.Priority_Weight)        U.regionWeight = num(s.Priority_Weight);
   if (s.Travel_style)           U.travelStyle = s.Travel_style;
-  if (s.Season_Preference)      U.seasonPref  = s.Season_Preference;
+  const seasonVal = s['Season_Preference_(Low/Mid/High/No)'] || s.Season_Preference;
+  if (seasonVal)                U.seasonPref  = seasonVal;
   if (s.Start_Month) {
     const n = parseInt(s.Start_Month);
     U.startMonth = isNaN(n) ? (MONTH_NAMES[s.Start_Month] || 5) : n;
@@ -318,11 +354,53 @@ function setSyncStatus(state, isoDate) {
 // ─────────────────────────────────────────────────────────────
 function clamp(v, lo, hi) { return Math.max(lo, Math.min(hi, v)); }
 
+// Returns 'low' | 'mid' | 'high' for a country in a given month
+function getCountrySeason(countryName, month) {
+  const cd = countryData[countryName];
+  if (!cd) return 'mid';
+  const abbr = MONTH_ABBR[month];
+  if (!abbr) return 'mid';
+  const inList = s => s && s.split(',').some(m => m.trim() === abbr);
+  if (inList(cd.high_season)) return 'high';
+  if (inList(cd.low_season))  return 'low';
+  return 'mid';
+}
+
+// Cost of one flight leg based on U.startMonth and destination country's season
+function flightLegCost(from, to) {
+  const fd = flightData[`${from}-${to}`];
+  if (!fd) return 0;
+  // For X→NL use origin's season; for NL→X or X→Y use destination's season
+  const destForSeason = to === 'NL' ? from : to;
+  const season = getCountrySeason(destForSeason, U.startMonth);
+  return fd[season] ?? fd.mid ?? 0;
+}
+
 function calcTrip(t) {
-  const hasB       = !!(t.country_b && t.country_b !== '');
-  const styleMult  = STYLE_MULT[U.travelStyle] || 1.35;
-  const flightMult = monthWindowMult(U.startMonth, U.endMonth);
-  const flight     = num(t.total_flight_cost) * flightMult;
+  const hasB = !!(t.country_b && t.country_b !== '');
+
+  // Daily costs — use real per-country per-style values when available
+  const styleCol = STYLE_COL[U.travelStyle] || 'daily_cost_mid';
+  const luxMult  = U.travelStyle === 'Luxury' ? LUXURY_MULT : 1;
+  const cdA = countryData[t.country_a];
+  const cdB = hasB ? countryData[t.country_b] : null;
+  const dailyCostA = cdA
+    ? num(cdA[styleCol]) * luxMult
+    : num(t.daily_cost_a) * (STYLE_MULT[U.travelStyle] || 1.35);
+  const dailyCostB = cdB
+    ? num(cdB[styleCol]) * luxMult
+    : num(t.daily_cost_b) * (STYLE_MULT[U.travelStyle] || 1.35);
+
+  // Flight costs — use per-route per-season values when available, else fall back
+  let flight;
+  if (Object.keys(flightData).length > 0) {
+    const legNLtoA = flightLegCost('NL', t.country_a);
+    const legAtoB  = hasB ? flightLegCost(t.country_a, t.country_b) : 0;
+    const legBtoNL = flightLegCost(hasB ? t.country_b : t.country_a, 'NL');
+    flight = legNLtoA + legAtoB + legBtoNL;
+  } else {
+    flight = num(t.total_flight_cost) * monthWindowMult(U.startMonth, U.endMonth);
+  }
 
   const minA = num(t.min_days_a), maxA = num(t.max_days_a), idealA = num(t.ideal_days_a);
   let daysA, daysB;
@@ -348,8 +426,8 @@ function calcTrip(t) {
   }
 
   const cost = flight
-    + daysA * num(t.daily_cost_a) * styleMult
-    + (hasB ? daysB * num(t.daily_cost_b) * styleMult : 0);
+    + daysA * dailyCostA
+    + (hasB ? daysB * dailyCostB : 0);
 
   const costFit   = cost <= U.budget ? 'OK' : 'OVER';
   const budgetRaw = (U.budget - cost) / U.budget * 100;
