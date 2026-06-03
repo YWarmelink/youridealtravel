@@ -506,6 +506,78 @@ function calcTrip(t) {
   };
 }
 
+// Calculates a trip using ideal_days per country instead of U.days
+function calcTripIdeal(t) {
+  const hasB = !!(t.country_b && t.country_b !== '');
+
+  const styleCol = STYLE_COL[U.travelStyle] || 'daily_cost_mid';
+  const luxMult  = U.travelStyle === 'Luxury' ? LUXURY_MULT : 1;
+  const cdA = countryData[t.country_a];
+  const cdB = hasB ? countryData[t.country_b] : null;
+  const dailyCostA = cdA ? num(cdA[styleCol]) * luxMult : num(t.daily_cost_a) * (STYLE_MULT[U.travelStyle] || 1.35);
+  const dailyCostB = cdB ? num(cdB[styleCol]) * luxMult : num(t.daily_cost_b) * (STYLE_MULT[U.travelStyle] || 1.35);
+  const travelersDaily = U.sharedAccom ? 0.55 + 0.45 * U.travelers : U.travelers;
+
+  let flightPerPerson;
+  if (Object.keys(flightData).length > 0) {
+    flightPerPerson = flightLegCost('NL', t.country_a)
+      + (hasB ? flightLegCost(t.country_a, t.country_b) : 0)
+      + flightLegCost(hasB ? t.country_b : t.country_a, 'NL');
+  } else {
+    flightPerPerson = num(t.total_flight_cost) * monthWindowMult(U.startMonth, U.endMonth);
+  }
+  const flight = flightPerPerson * U.travelers;
+
+  const daysA = Math.max(num(t.min_days_a), num(t.ideal_days_a));
+  const daysB = hasB ? Math.max(num(t.min_days_b), num(t.ideal_days_b)) : 0;
+
+  const cost = flight + daysA * dailyCostA * travelersDaily + (hasB ? daysB * dailyCostB * travelersDaily : 0);
+  const costFit   = cost <= U.budget ? 'OK' : 'OVER';
+  const budgetRaw = (U.budget - cost) / U.budget * 100;
+  const prefRaw   = (
+    U.adventure * num(t.adventure_score) + U.food * num(t.food_score) +
+    U.nature * num(t.nature_score) + U.beach * num(t.beach_score) +
+    U.nightlife * num(t.nightlife_score) + U.culture * num(t.culture_score)
+  );
+
+  return {
+    _t: t, feasible: true, hasB, daysA, daysB, cost, costFit,
+    rawBudget: budgetRaw, rawPref: prefRaw,
+    rawFatigue: 100 - num(t.fatigue_penalty),
+    rawSeason: Object.keys(countryData).length > 0
+      ? (hasB
+          ? (countrySeasonScore(t.country_a, U.startMonth, U.endMonth, U.seasonPref) +
+             countrySeasonScore(t.country_b, U.startMonth, U.endMonth, U.seasonPref)) / 2
+          : countrySeasonScore(t.country_a, U.startMonth, U.endMonth, U.seasonPref))
+      : num(t.total_season_score),
+    rawWish: num(t.total_wishlist_bonus),
+  };
+}
+
+function rankCalced(calced) {
+  if (calced.length === 0) return [];
+  const pctPref   = pctRanks(calced.map(c => c.rawPref));
+  const pctBudget = pctRanks(calced.map(c => c.rawBudget));
+  const pctFat    = pctRanks(calced.map(c => c.rawFatigue));
+  const pctSeason = pctRanks(calced.map(c => c.rawSeason));
+  const seasonW   = SEASON_WEIGHT[U.seasonPref] ?? 1.0;
+  const scored = calced.map((c, i) => ({
+    ...c,
+    pctPref: pctPref[i], pctBudget: pctBudget[i],
+    finalScore: U.prefWeight * pctPref[i] + U.budgetWeight * pctBudget[i] +
+                U.fatigueWeight * pctFat[i] + seasonW * pctSeason[i],
+  }));
+  scored.sort((a, b) => b.finalScore - a.finalScore);
+  const n = scored.length;
+  scored.forEach((c, i) => {
+    c.rank = i + 1;
+    const pct = (n - i) / n * 100;
+    c.tier = pct >= 75 ? 'TOP TIER' : pct >= 50 ? 'GOOD' : pct >= 25 ? 'MID' : 'LOW';
+    c.budgetScore = Math.max(0, Math.min(100, c.rawBudget));
+  });
+  return scored;
+}
+
 function pctRanks(arr) {
   const n      = arr.length;
   if (n <= 1)  return arr.map(() => 100);
@@ -529,45 +601,28 @@ function calcAndRank() {
     return true;
   });
 
-  const calced   = allowed.map(t => calcTrip(t));
-  const feasible = calced.filter(c => c.feasible);
-  if (feasible.length === 0) return [];
-
-  const pctPref   = pctRanks(feasible.map(c => c.rawPref));
-  const pctBudget = pctRanks(feasible.map(c => c.rawBudget));
-  const pctFat    = pctRanks(feasible.map(c => c.rawFatigue));
-  const pctSeason = pctRanks(feasible.map(c => c.rawSeason));
-
-  const seasonW = SEASON_WEIGHT[U.seasonPref] ?? 1.0;
-
-  const scored = feasible.map((c, i) => ({
-    ...c,
-    pctPref:   pctPref[i],
-    pctBudget: pctBudget[i],
-    finalScore: (
-      U.prefWeight    * pctPref[i]   +
-      U.budgetWeight  * pctBudget[i] +
-      U.fatigueWeight * pctFat[i]    +
-      seasonW         * pctSeason[i]
-    ),
-  }));
-
-  scored.sort((a, b) => b.finalScore - a.finalScore);
-  const n = scored.length;
-  scored.forEach((c, i) => {
-    c.rank    = i + 1;
-    const pct = (n - i) / n * 100;
-    c.tier    = pct >= 75 ? 'TOP TIER' : pct >= 50 ? 'GOOD' : pct >= 25 ? 'MID' : 'LOW';
-    c.budgetScore = Math.max(0, Math.min(100, c.rawBudget));
-  });
-
-  return scored;
+  const feasible = allowed.map(t => calcTrip(t)).filter(c => c.feasible);
+  return rankCalced(feasible);
 }
 
 // ─────────────────────────────────────────────────────────────
 // FILTERING
 // ─────────────────────────────────────────────────────────────
 function applyFilter(ranked) {
+  // Ideal trip filter has its own pipeline — doesn't use the pre-ranked list
+  if (currentFilter === 'idealtrip') {
+    if (rawTrips.length === 0) return [];
+    const allowed = rawTrips.filter(t => {
+      const fe  = filterMap[t.trip_key] || {};
+      const hasB = !!(t.country_b && t.country_b !== '');
+      if (U.avoidLong          && fe.is_intercontinental === 'TRUE') return false;
+      if (U.maxCountries === 1 && hasB)  return false;
+      if (U.comboOnly          && !hasB) return false;
+      return true;
+    });
+    return rankCalced(allowed.map(t => calcTripIdeal(t)));
+  }
+
   const all = [...ranked];
   switch (currentFilter) {
     case 'bestmatch':
