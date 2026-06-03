@@ -18,13 +18,15 @@ Sheet ID: `2PACX-1vSOSC5BGR5CbQ4B9xwfqMAoltIjE1b11akL5WrNeRXOiSzdueUgtvI7xYIQTUJ
 
 | Tab | GID | Inhoud |
 |-----|-----|--------|
-| SETTINGS | 0 | Gebruikersinstellingen (budget, stijl, maanden, etc.) |
-| TRIP_ENGINE | 2103068682 | Alle trips met berekende scores, seizoenen, dagkosten |
-| FILTER_ENGINE | 431668285 | Filterdata per trip (intercontinentaal, land-count, etc.) |
+| SETTINGS | 0 | Alleen nog aanwezig in sheet — **app laadt dit niet meer in** |
+| TRIP_ENGINE | 2103068682 | Trips: min/ideal/max days, fatigue, stijlscores |
+| FILTER_ENGINE | 431668285 | Filterdata per trip (intercontinentaal, etc.) |
 | COUNTRIES | 2119597216 | Per land: dagkosten per stijl, seizoensdefinities, scores |
 | FLIGHTS | 99695727 | Vliegkosten per route per seizoen (low/mid/high) |
 
 De sheet bevat ook een development log (GID 1912455839) en FILTER_RESULTS (GID 28259201) die de app niet gebruikt.
+
+**Belangrijk:** de JS-defaults in `U` (js/app.js) zijn altijd het startpunt bij het laden van de app. De SETTINGS-tab van de sheet heeft geen effect op de UI meer — die is alleen nog voor de sheet's eigen berekeningen.
 
 ---
 
@@ -40,12 +42,21 @@ Pakt de juiste kolom uit `countryData` (uit COUNTRIES tab):
 Bij meerdere reizigers: `dagkosten × (0.55 + 0.45 × N)` voor shared rooms, of `dagkosten × N` voor separate rooms.
 
 ### Dagverdeling
-`U.days` (trip duration instelling) is altijd het maximum — de `max_days` uit de sheet wordt genegeerd. Alleen `min_days` geldt als harde ondergrens (trip is niet haalbaar als `U.days < min_days`).
+`U.days` (trip duration instelling) is altijd het maximum — de app heeft geen apart max cap. Alleen `min_days` geldt als harde ondergrens.
 
 - **Single trip:** altijd `daysA = U.days` — de hele vakantie in dat land
 - **Combo trip:** verdeling via `idealA / (idealA + idealB)` ratio, alleen `min_days` als ondergrens
 
-Dit zorgt dat alle trips eerlijk vergeleken worden: een Italië-trip bij 21 ingestelde dagen gebruikt ook 21 dagen, net als Japan. Zo wint een goedkoop land niet puur door een korte verblijfsduur.
+Dit zorgt dat alle trips eerlijk vergeleken worden: Italië bij 21 dagen = 21 × €75, Japan bij 21 dagen = 21 × €130. Goedkope landen winnen niet meer door een korte max-verblijfsduur.
+
+### Overstay penalty
+`max_days` uit de sheet wordt nog wel gebruikt voor een score-penalty. Als een land voor langere tijd minder zinvol is (bijv. Brunei max 6 dagen), wordt de finale score verlaagd:
+
+```
+finalScore × 1 / (1 + overstay)
+```
+
+waarbij `overstay = (daysA - max_days) / max_days`. Brunei 21 dagen (max 6) → overstay=2.5 → score ×0.29. Trip blijft zichtbaar maar staat laag in de ranking.
 
 ### Vliegkosten
 Per leg opgezocht in `flightData` (uit FLIGHTS tab) via `flightLegCost(from, to)`:
@@ -63,17 +74,20 @@ Dynamisch berekend via `countrySeasonScore()` — geen sync nodig na het wijzige
 
 ---
 
-## Ranking (`calcAndRank` in js/app.js)
+## Ranking (`calcAndRank` + `rankCalced` in js/app.js)
 
 Elke trip krijgt een `finalScore`:
 ```
-finalScore = prefWeight × pctPref
+finalScore = (prefWeight × pctPref
            + budgetWeight × pctBudget
            + fatigueWeight × pctFatigue
-           + seasonWeight × pctSeason
+           + seasonWeight × pctSeason)
+           × 1/(1 + overstay)
 ```
 
-Alle onderdelen zijn percentielrangschikkingen (0–100) zodat ze vergelijkbaar zijn. `seasonWeight` volgt uit `SEASON_WEIGHT[U.seasonPref]` (High=2.0, Mid=1.0, Low=0.3, No=0.0).
+Alle pct-onderdelen zijn percentielrangschikkingen (0–100). `seasonWeight` volgt uit `SEASON_WEIGHT[U.seasonPref]` (High=2.0, Mid=1.0, Low=0.3, No=0.0). De `overstay` multiplier verlaagt de score als de trip langer duurt dan `max_days` voor dat land.
+
+`rankCalced()` is een gedeelde helper die door zowel de normale ranking als de 🎯 Ideal trip filter gebruikt wordt.
 
 **Tiers** op basis van positie in de ranking:
 - TOP TIER (groen): top 25%
@@ -87,14 +101,14 @@ Alle onderdelen zijn percentielrangschikkingen (0–100) zodat ze vergelijkbaar 
 
 | Filter | Logica |
 |--------|--------|
-| ⭐ Best within budget | Finale ranking score, alle factoren |
+| ⭐ Best within budget | Finale ranking score, alle factoren, alleen trips binnen budget |
 | 💰 Best for my budget | `prefRaw × (cost / budget)` — beloont trips die budget goed benutten |
 | 🏷 Cheapest | Sorteert op totale kosten oplopend |
 | 🧗 Adventure | Sorteert op adventure_score |
-| ✈ Combos | Alleen trips met 2 landen |
 | 😌 Low fatigue | Sorteert op fatigue_penalty oplopend |
 | 🌞 In season | Sorteert op seizoensscore |
 | 🍜 Food & culture | Sorteert op food_score + culture_score |
+| 🎯 Ideal trip | Gebruikt `ideal_days` per land i.p.v. `U.days` — toont ook trips boven budget (scoren lager). Laat zien wat een ideale trip per bestemming kost. |
 
 ---
 
