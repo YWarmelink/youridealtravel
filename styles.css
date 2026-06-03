@@ -580,7 +580,21 @@ body {
   flex-shrink: 0;
 }
 .travelers-btn:hover { border-color: #3b82f6; color: #3b82f6; background: #eff6ff; }
-.travelers-num { flex: 1; text-align: center; }
+.travelers-num {
+  width: 48px;
+  text-align: center;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 6px 4px;
+  font-size: 15px;
+  font-weight: 700;
+  color: #0f172a;
+  font-family: inherit;
+  background: #f8fafc;
+}
+.travelers-num:focus { outline: none; border-color: #3b82f6; background: #fff; }
+.travelers-num::-webkit-inner-spin-button,
+.travelers-num::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
 
 /* ── Card highlight (map pin click) ──────────────────────── */
 @keyframes card-flash {

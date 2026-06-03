@@ -204,7 +204,7 @@ function updateStyleHints() {
     Backpack: 'Budget accommodation & local transport',
     Standard: 'Mid-range hotels & transport',
     Comfort:  'Premium hotels & better transport',
-    Luxury:   'High-end hotels & service (×1.45 on Comfort)',
+    Luxury:   'Most comfort-focused — top hotels, no compromises',
   };
   const sh = document.getElementById('style-cost-hint');
   if (sh) sh.textContent = styleTexts[pendingU.travelStyle] || '';
@@ -907,16 +907,16 @@ function refreshUI() {
 function syncTravelers(val) {
   const v = Math.max(1, Math.min(6, +val || 1));
   pendingU.travelers = v;
+  const labels = ['', 'Solo trip', '2 travelers', '3 travelers', '4 travelers', '5 travelers', '6 travelers'];
   const el = document.getElementById('travelers-display');
-  if (el) el.textContent = v === 1 ? '1 person' : `${v} people`;
+  if (el) el.textContent = labels[v] || `${v} travelers`;
   const inp = document.getElementById('travelers-input');
   if (inp) inp.value = v;
   const hint = document.getElementById('travelers-hint');
   if (hint) {
-    const dailyMult = (0.55 + 0.45 * v).toFixed(2);
     hint.textContent = v === 1
-      ? 'Flights ×1, accommodation per person'
-      : `Flights ×${v}, daily costs ×${dailyMult} (shared accommodation)`;
+      ? 'Total trip cost for 1 person'
+      : `Total trip cost for ${v} people — accommodation shared`;
   }
 }
 
@@ -943,6 +943,7 @@ document.addEventListener('DOMContentLoaded', () => {
   buildSliders();
   initMap();
   updateStyleHints();
+  syncTravelers(U.travelers);
 
   // Budget
   document.getElementById('budget-slider').addEventListener('input', e => { syncBudget(e.target.value); markPending(); });
