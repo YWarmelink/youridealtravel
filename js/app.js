@@ -448,7 +448,7 @@ function calcTrip(t) {
   }
   const flight = flightPerPerson * U.travelers;
 
-  const minA = num(t.min_days_a), idealA = num(t.ideal_days_a);
+  const minA = num(t.min_days_a), idealA = num(t.ideal_days_a), maxA = num(t.max_days_a);
   let daysA, daysB;
 
   if (hasB) {
@@ -467,9 +467,15 @@ function calcTrip(t) {
     }
   } else {
     if (U.days < minA) return { _t: t, feasible: false, reason: `Needs ≥${minA} days` };
-    daysA = U.days;  // always use the full trip duration
+    daysA = U.days;
     daysB = 0;
   }
+
+  // Overstay penalty: how far over max_days is each country (0 = within max)
+  const maxB = hasB ? num(t.max_days_b) : 0;
+  const overstayA = maxA > 0 ? Math.max(0, daysA - maxA) / maxA : 0;
+  const overstayB = hasB && maxB > 0 ? Math.max(0, daysB - maxB) / maxB : 0;
+  const rawOverstay = Math.max(overstayA, overstayB);
 
   const cost = flight
     + daysA * dailyCostA * travelersDaily
@@ -502,7 +508,8 @@ function calcTrip(t) {
              countrySeasonScore(t.country_b, U.startMonth, U.endMonth, U.seasonPref)) / 2
           : countrySeasonScore(t.country_a, U.startMonth, U.endMonth, U.seasonPref))
       : num(t.total_season_score),
-    rawWish:    num(t.total_wishlist_bonus),
+    rawWish:     num(t.total_wishlist_bonus),
+    rawOverstay: rawOverstay,
   };
 }
 
@@ -561,12 +568,13 @@ function rankCalced(calced) {
   const pctFat    = pctRanks(calced.map(c => c.rawFatigue));
   const pctSeason = pctRanks(calced.map(c => c.rawSeason));
   const seasonW   = SEASON_WEIGHT[U.seasonPref] ?? 1.0;
-  const scored = calced.map((c, i) => ({
-    ...c,
-    pctPref: pctPref[i], pctBudget: pctBudget[i],
-    finalScore: U.prefWeight * pctPref[i] + U.budgetWeight * pctBudget[i] +
-                U.fatigueWeight * pctFat[i] + seasonW * pctSeason[i],
-  }));
+  const scored = calced.map((c, i) => {
+    const base = U.prefWeight * pctPref[i] + U.budgetWeight * pctBudget[i] +
+                 U.fatigueWeight * pctFat[i] + seasonW * pctSeason[i];
+    // Overstay penalty: score * 1/(1+overstay) — Brunei 21d (overstay=2.5) → ×0.29
+    const finalScore = base * (1 / (1 + (c.rawOverstay || 0)));
+    return { ...c, pctPref: pctPref[i], pctBudget: pctBudget[i], finalScore };
+  });
   scored.sort((a, b) => b.finalScore - a.finalScore);
   const n = scored.length;
   scored.forEach((c, i) => {
