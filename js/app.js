@@ -92,10 +92,10 @@ const STYLES = [
 ];
 
 const RANK_WEIGHTS = [
-  { uKey: 'prefWeight',    label: 'Travel style',  default: 1.5, min: 0, max: 5, step: 0.5 },
-  { uKey: 'budgetWeight',  label: 'Budget fit',    default: 4,   min: 0, max: 8, step: 0.5 },
-  { uKey: 'fatigueWeight', label: 'Low fatigue',   default: 2,   min: 0, max: 8, step: 0.5 },
-  { uKey: 'wishWeight',    label: 'Wishlist bonus', default: 4,   min: 0, max: 8, step: 0.5 },
+  { uKey: 'prefWeight',    label: 'Travel style',   default: 2, min: 0, max: 10, step: 1 },
+  { uKey: 'budgetWeight',  label: 'Budget fit',     default: 5, min: 0, max: 10, step: 1 },
+  { uKey: 'fatigueWeight', label: 'Low fatigue',    default: 2, min: 0, max: 10, step: 1 },
+  { uKey: 'wishWeight',    label: 'Wishlist bonus', default: 5, min: 0, max: 10, step: 1 },
 ];
 
 const FLAGS = {
@@ -134,10 +134,10 @@ let U = {
   endMonth: 4,
   seasonPref: 'Mid',
   maxCountries: 2,
+  comboOnly: false,
   avoidLong: false,
-  preferCombos: true,
   adventure: 6, food: 9, nature: 7, beach: 6, nightlife: 4, culture: 10,
-  prefWeight: 1.5, budgetWeight: 4, fatigueWeight: 2, wishWeight: 4,
+  prefWeight: 2, budgetWeight: 5, fatigueWeight: 2, wishWeight: 5,
 };
 
 // Draft settings — updated by all inputs; applied to U on Apply click
@@ -509,9 +509,9 @@ function calcAndRank() {
   const allowed = rawTrips.filter(t => {
     const fe  = filterMap[t.trip_key] || {};
     const hasB = !!(t.country_b && t.country_b !== '');
-    if (U.avoidLong    && fe.is_intercontinental === 'TRUE') return false;
-    if (hasB && U.maxCountries < 2)                          return false;
-    if (!U.preferCombos && hasB)                             return false;
+    if (U.avoidLong              && fe.is_intercontinental === 'TRUE') return false;
+    if (U.maxCountries === 1     && hasB)  return false;
+    if (U.comboOnly              && !hasB) return false;
     return true;
   });
 
@@ -794,10 +794,10 @@ function refreshUI() {
   const spEl = document.getElementById('season-pref');
   if (spEl) spEl.value = U.seasonPref;
 
-  document.getElementById('avoid-long').checked    = U.avoidLong;
-  document.getElementById('prefer-combos').checked = U.preferCombos;
+  document.getElementById('avoid-long').checked = U.avoidLong;
   document.getElementById('max-1').classList.toggle('active', U.maxCountries === 1);
-  document.getElementById('max-2').classList.toggle('active', U.maxCountries === 2);
+  document.getElementById('max-2').classList.toggle('active', U.maxCountries === 2 && !U.comboOnly);
+  document.getElementById('max-combo').classList.toggle('active', U.comboOnly);
 
   STYLES.forEach(s => {
     const slider = document.getElementById(`sl-${s.uKey}`);
@@ -873,22 +873,20 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   // Max countries
-  document.getElementById('max-1').addEventListener('click', () => {
-    pendingU.maxCountries = 1;
-    document.getElementById('max-1').classList.add('active');
-    document.getElementById('max-2').classList.remove('active');
+  const setMaxBtn = (maxC, combo) => {
+    pendingU.maxCountries = maxC;
+    pendingU.comboOnly    = combo;
+    document.getElementById('max-1').classList.toggle('active', maxC === 1);
+    document.getElementById('max-2').classList.toggle('active', maxC === 2 && !combo);
+    document.getElementById('max-combo').classList.toggle('active', combo);
     markPending();
-  });
-  document.getElementById('max-2').addEventListener('click', () => {
-    pendingU.maxCountries = 2;
-    document.getElementById('max-2').classList.add('active');
-    document.getElementById('max-1').classList.remove('active');
-    markPending();
-  });
+  };
+  document.getElementById('max-1').addEventListener('click',     () => setMaxBtn(1, false));
+  document.getElementById('max-2').addEventListener('click',     () => setMaxBtn(2, false));
+  document.getElementById('max-combo').addEventListener('click', () => setMaxBtn(2, true));
 
   // Toggles
-  document.getElementById('avoid-long').addEventListener('change', e => { pendingU.avoidLong    = e.target.checked; markPending(); });
-  document.getElementById('prefer-combos').addEventListener('change', e => { pendingU.preferCombos = e.target.checked; markPending(); });
+  document.getElementById('avoid-long').addEventListener('change', e => { pendingU.avoidLong = e.target.checked; markPending(); });
 
   // Filter tabs
   document.querySelectorAll('.tab').forEach(btn => {
