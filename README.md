@@ -124,7 +124,7 @@ finalScore = (prefWeight × pctPref
 |-----------|--------|
 | Budget | Hard filter + budget fit score in ranking |
 | Trip duration | Dagverdeling over landen, bepaalt haalbaarheid |
-| Travelers | Vluchten ×N, dagkosten ×(0.55+0.45×N) bij shared, ×N bij separate |
+| Travelers | Vluchten ×N, dagkosten ×(0.55+0.45×N) bij shared, ×N bij separate. Bij 2+ toont sidebar budget per persoon en kaarten tonen kosten per persoon |
 | Travel style | Kiest dagkostenkolom uit COUNTRIES tab |
 | Max countries | 1 land / tot 2 landen / alleen combos |
 | Avoid long flights | Filtert trips met `is_intercontinental=TRUE` |
