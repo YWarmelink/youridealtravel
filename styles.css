@@ -460,8 +460,9 @@ body {
 .cost-over { background: #fee2e2; color: #991b1b; }
 
 /* Cost per person */
-.cost-pp { font-size: 13px; font-weight: 700; color: var(--text-sec); margin-top: -4px; }
-.cost-pp-label { font-size: 10px; font-weight: 500; color: var(--text-muted); }
+.cost-pp              { font-size: 12px; color: var(--text-muted); margin-top: -4px; }
+.cost-pp-label        { font-size: 10px; font-weight: 500; color: var(--text-muted); }
+.cost-pp-label-inline { font-size: 13px; font-weight: 600; color: var(--text-sec); align-self: baseline; }
 
 /* Days breakdown */
 .card-days        { font-size: 11px; color: var(--text-muted); font-weight: 500; }

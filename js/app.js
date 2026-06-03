@@ -758,12 +758,16 @@ function renderCard(c) {
       </div>
       <div class="card-countries">${countriesHtml}</div>
       <div class="card-cost">
-        <span class="cost-amount">€${Math.round(c.cost).toLocaleString('nl-NL')}</span>
+        ${U.travelers > 1
+          ? `<span class="cost-amount">€${Math.round(c.cost / U.travelers).toLocaleString('nl-NL')}</span>
+             <span class="cost-pp-label-inline">p.p.</span>`
+          : `<span class="cost-amount">€${Math.round(c.cost).toLocaleString('nl-NL')}</span>`
+        }
         <span class="cost-badge ${c.costFit === 'OK' ? 'cost-ok' : 'cost-over'}">
           ${c.costFit === 'OK' ? '✓ Within budget' : '✗ Over budget'}
         </span>
       </div>
-      ${U.travelers > 1 ? `<div class="cost-pp">€${Math.round(c.cost / U.travelers).toLocaleString('nl-NL')} <span class="cost-pp-label">per person</span></div>` : ''}
+      ${U.travelers > 1 ? `<div class="cost-pp">€${Math.round(c.cost).toLocaleString('nl-NL')} <span class="cost-pp-label">total</span></div>` : ''}
       ${daysHtml}
       <div class="budget-bar-wrap">
         <div class="budget-bar">
@@ -994,12 +998,19 @@ function syncBudget(val) {
 }
 
 function updateBudgetPP(budget, travelers) {
-  const el = document.getElementById('budget-pp-hint');
-  if (!el) return;
-  if (!travelers || travelers <= 1) { el.style.display = 'none'; return; }
-  const pp = Math.round(budget / travelers);
-  el.style.display = '';
-  el.textContent = `€${pp.toLocaleString('nl-NL')} per person`;
+  const ppEl    = document.getElementById('budget-pp-hint');
+  const mainEl  = document.getElementById('budget-display');
+  if (!ppEl || !mainEl) return;
+  if (!travelers || travelers <= 1) {
+    ppEl.style.display = 'none';
+    mainEl.textContent = `€${Math.round(budget).toLocaleString('nl-NL')}`;
+    return;
+  }
+  const pp    = Math.round(budget / travelers);
+  const total = Math.round(budget);
+  mainEl.textContent = `€${pp.toLocaleString('nl-NL')} p.p.`;
+  ppEl.style.display = '';
+  ppEl.textContent   = `€${total.toLocaleString('nl-NL')} total`;
 }
 
 function syncDays(val) {
