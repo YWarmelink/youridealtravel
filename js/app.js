@@ -609,6 +609,7 @@ function initMap() {
     attributionControl: false,
   });
   _leafletMap.fitBounds([[-58, -170], [72, 170]]);
+  _leafletMap.zoomIn();
   L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
     maxZoom: 10,
   }).addTo(_leafletMap);
