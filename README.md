@@ -39,6 +39,14 @@ Pakt de juiste kolom uit `countryData` (uit COUNTRIES tab):
 
 Bij meerdere reizigers: `dagkosten × (0.55 + 0.45 × N)` voor shared rooms, of `dagkosten × N` voor separate rooms.
 
+### Dagverdeling
+`U.days` (trip duration instelling) is altijd het maximum — de `max_days` uit de sheet wordt genegeerd. Alleen `min_days` geldt als harde ondergrens (trip is niet haalbaar als `U.days < min_days`).
+
+- **Single trip:** altijd `daysA = U.days` — de hele vakantie in dat land
+- **Combo trip:** verdeling via `idealA / (idealA + idealB)` ratio, alleen `min_days` als ondergrens
+
+Dit zorgt dat alle trips eerlijk vergeleken worden: een Italië-trip bij 21 ingestelde dagen gebruikt ook 21 dagen, net als Japan. Zo wint een goedkoop land niet puur door een korte verblijfsduur.
+
 ### Vliegkosten
 Per leg opgezocht in `flightData` (uit FLIGHTS tab) via `flightLegCost(from, to)`:
 - Bepaalt het seizoen van het doelland op basis van `U.startMonth`
