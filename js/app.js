@@ -124,6 +124,7 @@ let _lastRanked   = [];
 let _leafletMap   = null;
 let _markerGroup  = null;
 let hasPending    = false;
+let pinnedKeys    = new Set();
 
 // Applied settings — used by the calculation engine
 let U = {
@@ -614,14 +615,17 @@ function updateMap(ranked) {
     const coords = COUNTRY_COORDS[country];
     if (!coords) return;
     const color = c.tier === 'TOP TIER' ? '#f59e0b' : c.tier === 'GOOD' ? '#22c55e' : '#3b82f6';
-    L.circleMarker(coords, {
+    const marker = L.circleMarker(coords, {
       radius: 9,
       fillColor: color,
       color: '#fff',
       weight: 2,
       opacity: 1,
       fillOpacity: 0.85,
-    }).bindTooltip(`${flag(country)} ${country} — #${c.rank}`, { permanent: false }).addTo(_markerGroup);
+    });
+    marker.bindTooltip(`${flag(country)} ${country} — #${c.rank}`, { permanent: false });
+    marker.on('click', () => scrollToCard(c._t.trip_key));
+    marker.addTo(_markerGroup);
   });
 }
 
@@ -681,12 +685,17 @@ function renderCard(c) {
   const fatCls = fatVal <= 10 ? 'fat-low' : fatVal <= 14 ? 'fat-mid' : 'fat-high';
   const fatLbl = fatVal <= 10 ? '😌 Easy trip' : fatVal <= 14 ? '🎒 Moderate' : '💪 Demanding';
 
+  const isPinned = pinnedKeys.has(t.trip_key);
+
   return `
-    <div class="trip-card ${tier.card}">
+    <div class="trip-card ${tier.card}" data-trip-key="${t.trip_key}">
       <div class="card-header">
         <span class="rank-num">#${c.rank}</span>
         <span class="tier-pill ${tier.pill}">${tier.label}</span>
-        ${c.hasB ? '<span class="combo-pill">✈ Combo</span>' : ''}
+        <div class="card-header-right">
+          ${c.hasB ? '<span class="combo-pill">✈ Combo</span>' : ''}
+          <button class="pin-btn${isPinned ? ' pinned' : ''}" data-key="${t.trip_key}" title="${isPinned ? 'Unpin' : 'Compare'}">${isPinned ? '✓' : '+'}</button>
+        </div>
       </div>
       <div class="card-countries">${countriesHtml}</div>
       <div class="card-cost">
@@ -730,6 +739,78 @@ function recalculate() {
   }
 
   updateMap(ranked);
+  renderCompare();
+}
+
+// ─────────────────────────────────────────────────────────────
+// SCROLL / PIN / COMPARE
+// ─────────────────────────────────────────────────────────────
+function scrollToCard(tripKey) {
+  const card = document.querySelector(`[data-trip-key="${tripKey}"]`);
+  if (!card) return;
+  card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  card.classList.add('card-highlight');
+  setTimeout(() => card.classList.remove('card-highlight'), 1800);
+}
+
+function togglePin(tripKey) {
+  if (pinnedKeys.has(tripKey)) {
+    pinnedKeys.delete(tripKey);
+  } else {
+    if (pinnedKeys.size >= 3) return;
+    pinnedKeys.add(tripKey);
+  }
+  document.querySelectorAll('.pin-btn').forEach(btn => {
+    const pinned = pinnedKeys.has(btn.dataset.key);
+    btn.classList.toggle('pinned', pinned);
+    btn.textContent = pinned ? '✓' : '+';
+    btn.title = pinned ? 'Unpin' : 'Compare';
+  });
+  renderCompare();
+}
+
+function renderCompare() {
+  const panel = document.getElementById('compare-panel');
+  const cols  = document.getElementById('compare-cols');
+  if (!panel || !cols) return;
+
+  if (pinnedKeys.size === 0) {
+    panel.classList.add('hidden');
+    return;
+  }
+  panel.classList.remove('hidden');
+
+  const trips = [...pinnedKeys]
+    .map(key => _lastRanked.find(c => c._t.trip_key === key))
+    .filter(Boolean);
+
+  cols.innerHTML = trips.map(c => {
+    const t        = c._t;
+    const name     = [t.country_a, t.country_b].filter(Boolean).map(co => `${flag(co)} ${co}`).join(' + ');
+    const daysText = c.hasB ? `${c.daysA}d + ${c.daysB}d` : `${c.daysA} days`;
+    const seasonVal = c.rawSeason;
+    const seasonLbl = seasonVal >= 50 ? '☀️ Peak' : seasonVal >= 20 ? '🌤 Good' : '🌧 Off';
+    const fatVal    = num(t.fatigue_penalty);
+    const fatLbl    = fatVal <= 10 ? '😌 Easy' : fatVal <= 14 ? '🎒 Moderate' : '💪 Demanding';
+    const topS = STYLES.map(s => ({ ...s, val: num(t[s.key]) })).sort((a, b) => b.val - a.val).slice(0, 3);
+
+    return `
+      <div class="compare-col">
+        <div class="compare-col-head">
+          <span class="compare-col-name">${name}</span>
+          <button class="unpin-btn" data-key="${t.trip_key}">✕</button>
+        </div>
+        <div class="compare-stat-row"><span class="csl">Cost</span>     <span class="csv compare-cost">€${Math.round(c.cost).toLocaleString('nl-NL')}</span></div>
+        <div class="compare-stat-row"><span class="csl">Duration</span> <span class="csv">${daysText}</span></div>
+        <div class="compare-stat-row"><span class="csl">Season</span>   <span class="csv">${seasonLbl}</span></div>
+        <div class="compare-stat-row"><span class="csl">Fatigue</span>  <span class="csv">${fatLbl}</span></div>
+        <div class="compare-styles">${topS.map(s => `<span>${s.icon} ${s.label} <b>${s.val}</b></span>`).join('')}</div>
+      </div>`;
+  }).join('');
+
+  cols.querySelectorAll('.unpin-btn').forEach(btn => {
+    btn.addEventListener('click', () => togglePin(btn.dataset.key));
+  });
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -900,6 +981,19 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Apply button
   document.getElementById('apply-btn').addEventListener('click', applyChanges);
+
+  // Pin buttons (event delegation)
+  document.getElementById('trip-grid').addEventListener('click', e => {
+    const btn = e.target.closest('.pin-btn');
+    if (btn) { e.stopPropagation(); togglePin(btn.dataset.key); }
+  });
+
+  // Compare panel clear
+  document.getElementById('compare-clear-btn').addEventListener('click', () => {
+    pinnedKeys.clear();
+    document.querySelectorAll('.pin-btn').forEach(b => { b.classList.remove('pinned'); b.textContent = '+'; b.title = 'Compare'; });
+    renderCompare();
+  });
 
   // Sync buttons
   const doSync = () => syncFromSheets();
