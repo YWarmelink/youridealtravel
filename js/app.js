@@ -92,11 +92,10 @@ const STYLES = [
 ];
 
 const RANK_WEIGHTS = [
-  { uKey: 'prefWeight',    label: 'Style preference', default: 1.5, min: 0, max: 5, step: 0.5 },
-  { uKey: 'budgetWeight',  label: 'Budget fit',        default: 4,   min: 0, max: 8, step: 0.5 },
-  { uKey: 'fatigueWeight', label: 'Low fatigue',       default: 2,   min: 0, max: 8, step: 0.5 },
-  { uKey: 'wishWeight',    label: 'Wishlist bonus',    default: 4,   min: 0, max: 8, step: 0.5 },
-  { uKey: 'regionWeight',  label: 'Region bonus',      default: 3,   min: 0, max: 8, step: 0.5 },
+  { uKey: 'prefWeight',    label: 'Travel style',  default: 1.5, min: 0, max: 5, step: 0.5 },
+  { uKey: 'budgetWeight',  label: 'Budget fit',    default: 4,   min: 0, max: 8, step: 0.5 },
+  { uKey: 'fatigueWeight', label: 'Low fatigue',   default: 2,   min: 0, max: 8, step: 0.5 },
+  { uKey: 'wishWeight',    label: 'Wishlist bonus', default: 4,   min: 0, max: 8, step: 0.5 },
 ];
 
 const FLAGS = {
@@ -120,7 +119,7 @@ let rawTrips      = [];
 let filterMap     = {};
 let countryData   = {};  // { 'Japan': { daily_cost_backpack, daily_cost_mid, daily_cost_premium, low_season, ... } }
 let flightData    = {};  // { 'NL-Japan': { low, mid, high }, ... }
-let currentFilter = 'top10';
+let currentFilter = 'bestmatch';
 let _lastRanked   = [];
 let _leafletMap   = null;
 let _markerGroup  = null;
@@ -138,7 +137,7 @@ let U = {
   avoidLong: false,
   preferCombos: true,
   adventure: 6, food: 9, nature: 7, beach: 6, nightlife: 4, culture: 10,
-  prefWeight: 1.5, budgetWeight: 4, fatigueWeight: 2, wishWeight: 4, regionWeight: 3,
+  prefWeight: 1.5, budgetWeight: 4, fatigueWeight: 2, wishWeight: 4,
 };
 
 // Draft settings — updated by all inputs; applied to U on Apply click
@@ -487,7 +486,6 @@ function calcAndRank() {
   const pctBudget = pctRanks(feasible.map(c => c.rawBudget));
   const pctFat    = pctRanks(feasible.map(c => c.rawFatigue));
   const pctSeason = pctRanks(feasible.map(c => c.rawSeason));
-  const pctRegion = pctRanks(feasible.map(c => c.rawRegion));
   const pctWish   = pctRanks(feasible.map(c => c.rawWish));
 
   const seasonW = SEASON_WEIGHT[U.seasonPref] ?? 1.0;
@@ -501,7 +499,6 @@ function calcAndRank() {
       U.budgetWeight  * pctBudget[i] +
       U.fatigueWeight * pctFat[i]    +
       U.wishWeight    * pctWish[i]   +
-      U.regionWeight  * pctRegion[i] +
       seasonW         * pctSeason[i]
     ),
   }));
@@ -524,12 +521,23 @@ function calcAndRank() {
 function applyFilter(ranked) {
   const all = [...ranked];
   switch (currentFilter) {
-    case 'top10':      return all.slice(0, 10);
-    case 'budget':     return all.sort((a, b) => a.cost - b.cost);
-    case 'adventure':  return all.sort((a, b) => num(b._t.adventure_score) - num(a._t.adventure_score));
-    case 'combo':      return all.filter(c => c.hasB);
-    case 'lowfatigue': return all.sort((a, b) => num(a._t.fatigue_penalty) - num(b._t.fatigue_penalty));
-    default:           return all;
+    case 'bestmatch':
+      return all.slice(0, 10);
+    case 'bestforbudget':
+      return all
+        .map(c => ({ ...c, _budgetScore: c.rawPref * (c.cost / U.budget) }))
+        .sort((a, b) => b._budgetScore - a._budgetScore)
+        .slice(0, 10);
+    case 'budget':
+      return all.sort((a, b) => a.cost - b.cost);
+    case 'adventure':
+      return all.sort((a, b) => num(b._t.adventure_score) - num(a._t.adventure_score));
+    case 'combo':
+      return all.filter(c => c.hasB);
+    case 'lowfatigue':
+      return all.sort((a, b) => num(a._t.fatigue_penalty) - num(b._t.fatigue_penalty));
+    default:
+      return all;
   }
 }
 
