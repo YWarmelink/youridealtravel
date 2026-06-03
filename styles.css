@@ -33,8 +33,11 @@
 
 *, *::before, *::after { box-sizing: border-box; }
 
-html, body {
-  overflow-x: hidden;
+html {
+  overflow-x: clip;   /* clip is harder than hidden — no scroll container created */
+}
+body {
+  overflow-x: clip;
   max-width: 100%;
 }
 
@@ -58,19 +61,39 @@ body {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 16px;
+  gap: 12px;
   box-shadow: 0 2px 12px rgba(0,0,0,0.25);
   position: sticky;
   top: 0;
   z-index: 100;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
 }
 
-.header-brand { display: flex; align-items: center; gap: 12px; }
-.header-logo  { font-size: 24px; }
-.header-brand h1 { margin: 0; font-size: 18px; font-weight: 800; letter-spacing: -0.02em; }
+/* Allow brand to shrink so right-side buttons are never pushed off */
+.header-brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+  flex-shrink: 1;
+  overflow: hidden;
+}
+.header-logo  { font-size: 24px; flex-shrink: 0; }
+.header-brand h1 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
 .header-sub   { font-size: 10px; color: rgba(255,255,255,0.45); display: block; }
 
-.header-right { display: flex; align-items: center; gap: 10px; }
+/* Keep buttons together, never shrink */
+.header-right { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
 
 .sync-status {
   font-size: 11px;
@@ -288,7 +311,7 @@ body {
 
 .trip-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(min(280px, 100%), 1fr));
   gap: 16px;
   align-items: start;
 }
@@ -611,12 +634,13 @@ body {
 
 @media (max-width: 600px) {
   /* Header: compact on small screens */
-  .app-header { padding: 10px 14px; gap: 8px; }
-  .header-brand h1 { font-size: 15px; }
-  .header-logo { font-size: 20px; }
-  .sync-status { display: none; }                /* hide "Synced …" text */
-  .sync-btn { padding: 6px 10px; font-size: 11px; }
+  .app-header { padding: 10px 12px; gap: 8px; }
+  .header-brand h1 { font-size: 13px; }
+  .header-logo { font-size: 18px; }
+  .sync-status { display: none; }
+  .sync-btn { padding: 5px 9px; font-size: 11px; }
   .sync-label { display: none; }
+  .theme-btn { padding: 5px 8px; font-size: 13px; }
 
   /* Filters: scrollable row instead of wrapping */
   .filter-tabs {
