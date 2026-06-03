@@ -127,7 +127,7 @@ let pinnedKeys    = new Set();
 
 // Applied settings — used by the calculation engine
 let U = {
-  budget: 3500,
+  budget: 3000,
   days: 21,
   travelStyle: 'Backpack',
   startMonth: 10,
@@ -304,32 +304,7 @@ function applyCache(payload) {
   filterMap   = payload.fMap;
   countryData = payload.cData || {};
   flightData  = payload.fData || {};
-
-  const s = payload.settings || {};
-  if (s.Budget)                 U.budget      = parseInt(s.Budget)        || U.budget;
-  if (s.Adventure)              U.adventure   = parseInt(s.Adventure)     || U.adventure;
-  if (s.Food)                   U.food        = parseInt(s.Food)          || U.food;
-  if (s.Nature)                 U.nature      = parseInt(s.Nature)        || U.nature;
-  if (s.Beach)                  U.beach       = parseInt(s.Beach)         || U.beach;
-  if (s.Nightlife)              U.nightlife   = parseInt(s.Nightlife)     || U.nightlife;
-  if (s.Culture)                U.culture     = parseInt(s.Culture)       || U.culture;
-  if (s.Preference_Weight)      U.prefWeight  = num(s.Preference_Weight);
-  if (s.Budget_Pressure_Weight) U.budgetWeight = num(s.Budget_Pressure_Weight);
-  if (s.Fatigue_Weight)         U.fatigueWeight = num(s.Fatigue_Weight);
-  if (s.Wishlist_Weight)        U.wishWeight  = num(s.Wishlist_Weight);
-  if (s.Priority_Weight)        U.regionWeight = num(s.Priority_Weight);
-  if (s.Travel_style)           U.travelStyle = s.Travel_style;
-  const seasonVal = s['Season_Preference_(Low/Mid/High/No)'] || s.Season_Preference;
-  if (seasonVal)                U.seasonPref  = seasonVal;
-  if (s.Start_Month) {
-    const n = parseInt(s.Start_Month);
-    U.startMonth = isNaN(n) ? (MONTH_NAMES[s.Start_Month] || 5) : n;
-  }
-  if (s.End_Month) {
-    const n = parseInt(s.End_Month);
-    U.endMonth = isNaN(n) ? (MONTH_NAMES[s.End_Month] || 4) : n;
-  }
-
+  // Sheet SETTINGS worden niet meer in U geladen — JS defaults zijn de bron van waarheid
   refreshUI();
   recalculate();
 }
