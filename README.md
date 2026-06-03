@@ -78,22 +78,27 @@ Dynamisch berekend via `countrySeasonScore()` — geen sync nodig na het wijzige
 
 Elke trip krijgt een `finalScore`:
 ```
-finalScore = (prefWeight × pctPref
-           + budgetWeight × pctBudget
+finalScore = (prefWeight  × pctPref
+           + budgetWeight × budgetScore
            + fatigueWeight × pctFatigue
-           + seasonWeight × pctSeason)
+           + seasonWeight  × pctSeason)
            × 1/(1 + overstay)
            × comboFactor
 ```
 
-- Alle `pct*`-onderdelen zijn percentielrangschikkingen (0–100)
+- `pctPref`, `pctFatigue`, `pctSeason` zijn percentielrangschikkingen (0–100)
+- `budgetScore` is een **vaste 0–100 schaal** via `calcBudgetScore()` — geen percentiel:
+  - Binnen budget: `50 + (ruimte / budget × 50)` → 50–100
+  - Boven budget: `50 × (1 − overshoot)²` → 0–50, zachte kwadratische curve
+  - 5% over = 45, 10% over = 40, 33% over = 22, 50% over = 12
+- `budgetWeight = 0` → budget telt helemaal niet, ook geen verborgen penalty
 - `seasonWeight` = `SEASON_WEIGHT[U.seasonPref]` (High=2.0, Mid=1.0, Low=0.3, No=0.0)
-- `overstay` multiplier = straf voor te lang in één land (zie dagverdeling)
-- `comboFactor` = 1.08 voor combo trips (2 landen), 1.0 voor single — beloont diversiteit
+- `overstay` multiplier = straf voor te lang in één land
+- `comboFactor` = 1.08 voor combo trips, 1.0 voor single
 
-**Standaard ranking weights:** Travel style=8, Budget fit=10, Low fatigue=2. Budget fit op 10 zorgt dat trips significant boven budget automatisch laag scoren.
+**Standaard ranking weights:** Travel style=8, Budget fit=5, Low fatigue=2.
 
-`rankCalced()` is een gedeelde helper die door zowel de normale ranking als de 🎯 Ideal trip filter gebruikt wordt.
+`rankCalced()` is een gedeelde helper voor zowel normale ranking als 🎯 Ideal trip filter.
 
 **Tiers** op basis van positie in de ranking:
 - TOP TIER (groen): top 25%
