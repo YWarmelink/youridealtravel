@@ -92,10 +92,9 @@ const STYLES = [
 ];
 
 const RANK_WEIGHTS = [
-  { uKey: 'prefWeight',    label: 'Travel style',   default: 2, min: 0, max: 10, step: 1 },
-  { uKey: 'budgetWeight',  label: 'Budget fit',     default: 5, min: 0, max: 10, step: 1 },
-  { uKey: 'fatigueWeight', label: 'Low fatigue',    default: 2, min: 0, max: 10, step: 1 },
-  { uKey: 'wishWeight',    label: 'Wishlist bonus', default: 5, min: 0, max: 10, step: 1 },
+  { uKey: 'prefWeight',    label: 'Travel style', default: 2, min: 0, max: 10, step: 1 },
+  { uKey: 'budgetWeight',  label: 'Budget fit',   default: 5, min: 0, max: 10, step: 1 },
+  { uKey: 'fatigueWeight', label: 'Low fatigue',  default: 2, min: 0, max: 10, step: 1 },
 ];
 
 const FLAGS = {
@@ -139,7 +138,7 @@ let U = {
   avoidLong: false,
   travelers: 1,
   adventure: 6, food: 9, nature: 7, beach: 6, nightlife: 4, culture: 10,
-  prefWeight: 2, budgetWeight: 5, fatigueWeight: 2, wishWeight: 5,
+  prefWeight: 2, budgetWeight: 5, fatigueWeight: 2,
 };
 
 // Draft settings — updated by all inputs; applied to U on Apply click
@@ -342,8 +341,14 @@ function setSyncStatus(state, isoDate) {
     el.style.color = 'rgba(255,255,255,0.6)';
   } else if (state === 'ok') {
     const d = isoDate ? new Date(isoDate) : new Date();
-    el.textContent = `Synced ${d.toLocaleDateString('nl-NL')} ${d.toLocaleTimeString('nl-NL', { hour: '2-digit', minute: '2-digit' })}`;
-    el.style.color = 'rgba(255,255,255,0.5)';
+    const daysSince = (Date.now() - d.getTime()) / (1000 * 60 * 60 * 24);
+    if (daysSince > 7) {
+      el.textContent = `⚠ Data is ${Math.floor(daysSince)} days old — sync recommended`;
+      el.style.color = '#fbbf24';
+    } else {
+      el.textContent = `Synced ${d.toLocaleDateString('nl-NL')} ${d.toLocaleTimeString('nl-NL', { hour: '2-digit', minute: '2-digit' })}`;
+      el.style.color = 'rgba(255,255,255,0.5)';
+    }
   } else {
     el.textContent = '⚠ Sync failed';
     el.style.color = '#f87171';
@@ -529,7 +534,6 @@ function calcAndRank() {
   const pctBudget = pctRanks(feasible.map(c => c.rawBudget));
   const pctFat    = pctRanks(feasible.map(c => c.rawFatigue));
   const pctSeason = pctRanks(feasible.map(c => c.rawSeason));
-  const pctWish   = pctRanks(feasible.map(c => c.rawWish));
 
   const seasonW = SEASON_WEIGHT[U.seasonPref] ?? 1.0;
 
@@ -541,7 +545,6 @@ function calcAndRank() {
       U.prefWeight    * pctPref[i]   +
       U.budgetWeight  * pctBudget[i] +
       U.fatigueWeight * pctFat[i]    +
-      U.wishWeight    * pctWish[i]   +
       seasonW         * pctSeason[i]
     ),
   }));
@@ -578,6 +581,13 @@ function applyFilter(ranked) {
       return all.filter(c => c.hasB);
     case 'lowfatigue':
       return all.sort((a, b) => num(a._t.fatigue_penalty) - num(b._t.fatigue_penalty));
+    case 'inseason':
+      return all.sort((a, b) => b.rawSeason - a.rawSeason);
+    case 'foodculture':
+      return all.sort((a, b) =>
+        (num(b._t.food_score) + num(b._t.culture_score)) -
+        (num(a._t.food_score) + num(a._t.culture_score))
+      );
     default:
       return all;
   }
