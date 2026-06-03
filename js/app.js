@@ -763,6 +763,7 @@ function renderCard(c) {
           ${c.costFit === 'OK' ? '✓ Within budget' : '✗ Over budget'}
         </span>
       </div>
+      ${U.travelers > 1 ? `<div class="cost-pp">€${Math.round(c.cost / U.travelers).toLocaleString('nl-NL')} <span class="cost-pp-label">per person</span></div>` : ''}
       ${daysHtml}
       <div class="budget-bar-wrap">
         <div class="budget-bar">
@@ -968,6 +969,7 @@ function syncTravelers(val) {
   const accomRow = document.getElementById('accom-row');
   if (accomRow) accomRow.style.display = v > 1 ? '' : 'none';
   updateTravelersHint(v, pendingU.sharedAccom);
+  updateBudgetPP(pendingU.budget, v);
 }
 
 function updateTravelersHint(v, shared) {
@@ -988,6 +990,16 @@ function syncBudget(val) {
   document.getElementById('budget-slider').value = v;
   document.getElementById('budget-number').value = v;
   document.getElementById('budget-display').textContent = `€${v.toLocaleString('nl-NL')}`;
+  updateBudgetPP(v, pendingU.travelers);
+}
+
+function updateBudgetPP(budget, travelers) {
+  const el = document.getElementById('budget-pp-hint');
+  if (!el) return;
+  if (!travelers || travelers <= 1) { el.style.display = 'none'; return; }
+  const pp = Math.round(budget / travelers);
+  el.style.display = '';
+  el.textContent = `€${pp.toLocaleString('nl-NL')} per person`;
 }
 
 function syncDays(val) {
