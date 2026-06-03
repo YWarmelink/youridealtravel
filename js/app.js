@@ -643,8 +643,6 @@ function applyFilter(ranked) {
       return all.sort((a, b) => a.cost - b.cost);
     case 'adventure':
       return all.sort((a, b) => num(b._t.adventure_score) - num(a._t.adventure_score));
-    case 'combo':
-      return all.filter(c => c.hasB);
     case 'lowfatigue':
       return all.sort((a, b) => num(a._t.fatigue_penalty) - num(b._t.fatigue_penalty));
     case 'inseason':
