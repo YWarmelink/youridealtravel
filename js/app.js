@@ -138,7 +138,7 @@ let U = {
   avoidLong: false,
   travelers: 1,
   sharedAccom: true,
-  adventure: 7, food: 9, nature: 7, beach: 5, nightlife: 3, culture: 9,
+  adventure: 7, food: 10, nature: 8, beach: 6, nightlife: 3, culture: 9,
   prefWeight: 8, budgetWeight: 6, fatigueWeight: 2,
 };
 
