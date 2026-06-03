@@ -9,8 +9,8 @@ const GID = {
   COUNTRIES:     '2119597216',
   FLIGHTS:       '99695727',
 };
-const CACHE_KEY = 'travelos_v2_data';
-const SYNC_KEY  = 'travelos_v2_synced';
+const CACHE_KEY = 'youridealtravel_v1_data';
+const SYNC_KEY  = 'youridealtravel_v1_synced';
 
 function csvUrl(gid) {
   return `https://docs.google.com/spreadsheets/d/e/${SHEET_ID}/pub?output=csv&gid=${gid}&cb=${Date.now()}`;
