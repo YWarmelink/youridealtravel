@@ -1,23 +1,35 @@
-const CACHE = 'youridealtravel-v1';
+const CACHE = 'youridealtravel-v2';
 
-const ASSETS = [
+const LOCAL_ASSETS = [
   '/youridealtravel/',
   '/youridealtravel/index.html',
   '/youridealtravel/styles.css',
   '/youridealtravel/js/app.js',
+  '/youridealtravel/manifest.json',
+  '/youridealtravel/icons/icon-192.png',
+  '/youridealtravel/icons/icon-512.png',
+];
+
+const EXTERNAL_ASSETS = [
   'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css',
   'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js',
 ];
 
-// Cache all assets on install
+// Cache local files on install — always works
+// Try external CDN files but don't fail if unavailable
 self.addEventListener('install', event => {
   event.waitUntil(
-    caches.open(CACHE).then(cache => cache.addAll(ASSETS))
+    caches.open(CACHE).then(async cache => {
+      await cache.addAll(LOCAL_ASSETS);
+      await Promise.allSettled(
+        EXTERNAL_ASSETS.map(url => cache.add(url).catch(() => {}))
+      );
+    })
   );
   self.skipWaiting();
 });
 
-// Clean up old caches on activate
+// Remove old caches on activate
 self.addEventListener('activate', event => {
   event.waitUntil(
     caches.keys().then(keys =>
@@ -27,13 +39,9 @@ self.addEventListener('activate', event => {
   self.clients.claim();
 });
 
-// Serve from cache, fall back to network
-// Google Sheets CSV fetches always go to network (never cached)
+// Cache-first for everything except Google Sheets syncs
 self.addEventListener('fetch', event => {
-  const url = event.request.url;
-
-  // Never cache Google Sheets syncs — always needs fresh data
-  if (url.includes('docs.google.com')) return;
+  if (event.request.url.includes('docs.google.com')) return;
 
   event.respondWith(
     caches.match(event.request).then(cached => cached || fetch(event.request))
