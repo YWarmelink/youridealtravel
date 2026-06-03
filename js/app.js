@@ -92,8 +92,8 @@ const STYLES = [
 ];
 
 const RANK_WEIGHTS = [
-  { uKey: 'prefWeight',    label: 'Travel style', default: 2, min: 0, max: 10, step: 1 },
-  { uKey: 'budgetWeight',  label: 'Budget fit',   default: 5, min: 0, max: 10, step: 1 },
+  { uKey: 'prefWeight',    label: 'Travel style', default: 8, min: 0, max: 10, step: 1 },
+  { uKey: 'budgetWeight',  label: 'Budget fit',   default: 6, min: 0, max: 10, step: 1 },
   { uKey: 'fatigueWeight', label: 'Low fatigue',  default: 2, min: 0, max: 10, step: 1 },
 ];
 
@@ -127,19 +127,19 @@ let pinnedKeys    = new Set();
 
 // Applied settings — used by the calculation engine
 let U = {
-  budget: 6000,
-  days: 14,
-  travelStyle: 'Standard',
-  startMonth: 5,
-  endMonth: 4,
+  budget: 3500,
+  days: 21,
+  travelStyle: 'Backpack',
+  startMonth: 10,
+  endMonth: 11,
   seasonPref: 'Mid',
   maxCountries: 2,
   comboOnly: false,
   avoidLong: false,
   travelers: 1,
   sharedAccom: true,
-  adventure: 6, food: 9, nature: 7, beach: 6, nightlife: 4, culture: 10,
-  prefWeight: 2, budgetWeight: 5, fatigueWeight: 2,
+  adventure: 7, food: 9, nature: 7, beach: 5, nightlife: 3, culture: 9,
+  prefWeight: 8, budgetWeight: 6, fatigueWeight: 2,
 };
 
 // Draft settings — updated by all inputs; applied to U on Apply click
@@ -938,7 +938,7 @@ function updateTravelersHint(v, shared) {
   } else if (shared) {
     hint.textContent = `Total for ${v} people — shared room (accommodation split)`;
   } else {
-    hint.textContent = `Total for ${v} people — separate rooms (each pays full daily rate)`;
+    hint.textContent = `Total for ${v} people — separate rooms (each pays for separate room)`;
   }
 }
 
