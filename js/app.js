@@ -137,6 +137,7 @@ let U = {
   maxCountries: 2,
   comboOnly: false,
   avoidLong: false,
+  travelers: 1,
   adventure: 6, food: 9, nature: 7, beach: 6, nightlife: 4, culture: 10,
   prefWeight: 2, budgetWeight: 5, fatigueWeight: 2, wishWeight: 5,
 };
@@ -424,16 +425,20 @@ function calcTrip(t) {
     ? num(cdB[styleCol]) * luxMult
     : num(t.daily_cost_b) * (STYLE_MULT[U.travelStyle] || 1.35);
 
+  // Travelers: flights ×N, daily costs shared (accommodation split)
+  const travelersDaily = 0.55 + 0.45 * U.travelers;
+
   // Flight costs — use per-route per-season values when available, else fall back
-  let flight;
+  let flightPerPerson;
   if (Object.keys(flightData).length > 0) {
     const legNLtoA = flightLegCost('NL', t.country_a);
     const legAtoB  = hasB ? flightLegCost(t.country_a, t.country_b) : 0;
     const legBtoNL = flightLegCost(hasB ? t.country_b : t.country_a, 'NL');
-    flight = legNLtoA + legAtoB + legBtoNL;
+    flightPerPerson = legNLtoA + legAtoB + legBtoNL;
   } else {
-    flight = num(t.total_flight_cost) * monthWindowMult(U.startMonth, U.endMonth);
+    flightPerPerson = num(t.total_flight_cost) * monthWindowMult(U.startMonth, U.endMonth);
   }
+  const flight = flightPerPerson * U.travelers;
 
   const minA = num(t.min_days_a), maxA = num(t.max_days_a), idealA = num(t.ideal_days_a);
   let daysA, daysB;
@@ -459,8 +464,8 @@ function calcTrip(t) {
   }
 
   const cost = flight
-    + daysA * dailyCostA
-    + (hasB ? daysB * dailyCostB : 0);
+    + daysA * dailyCostA * travelersDaily
+    + (hasB ? daysB * dailyCostB * travelersDaily : 0);
 
   const costFit   = cost <= U.budget ? 'OK' : 'OVER';
   const budgetRaw = (U.budget - cost) / U.budget * 100;
@@ -560,12 +565,11 @@ function applyFilter(ranked) {
   const all = [...ranked];
   switch (currentFilter) {
     case 'bestmatch':
-      return all.slice(0, 10);
+      return all;
     case 'bestforbudget':
       return all
         .map(c => ({ ...c, _budgetScore: c.rawPref * (c.cost / U.budget) }))
-        .sort((a, b) => b._budgetScore - a._budgetScore)
-        .slice(0, 10);
+        .sort((a, b) => b._budgetScore - a._budgetScore);
     case 'budget':
       return all.sort((a, b) => a.cost - b.cost);
     case 'adventure':
@@ -892,7 +896,24 @@ function refreshUI() {
     if (slider) { slider.value = U[w.uKey]; if (valEl) valEl.textContent = U[w.uKey]; }
   });
 
+  syncTravelers(U.travelers);
   updateStyleHints();
+}
+
+function syncTravelers(val) {
+  const v = Math.max(1, Math.min(6, +val || 1));
+  pendingU.travelers = v;
+  const el = document.getElementById('travelers-display');
+  if (el) el.textContent = v === 1 ? '1 person' : `${v} people`;
+  const inp = document.getElementById('travelers-input');
+  if (inp) inp.value = v;
+  const hint = document.getElementById('travelers-hint');
+  if (hint) {
+    const dailyMult = (0.55 + 0.45 * v).toFixed(2);
+    hint.textContent = v === 1
+      ? 'Flights ×1, accommodation per person'
+      : `Flights ×${v}, daily costs ×${dailyMult} (shared accommodation)`;
+  }
 }
 
 function syncBudget(val) {
@@ -926,6 +947,12 @@ document.addEventListener('DOMContentLoaded', () => {
   // Days
   document.getElementById('days-slider').addEventListener('input', e => { syncDays(e.target.value); markPending(); });
   document.getElementById('days-number').addEventListener('input', e => { syncDays(e.target.value); markPending(); });
+
+  // Travel style
+  // Travelers
+  document.getElementById('travelers-input').addEventListener('input', e => { syncTravelers(e.target.value); markPending(); });
+  document.getElementById('travelers-dec').addEventListener('click', () => { syncTravelers(pendingU.travelers - 1); markPending(); });
+  document.getElementById('travelers-inc').addEventListener('click', () => { syncTravelers(pendingU.travelers + 1); markPending(); });
 
   // Travel style
   document.getElementById('travel-style').addEventListener('change', e => {

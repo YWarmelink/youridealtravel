@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Travel OS</title>
+  <title>YourIdealTravel</title>
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="styles.css">
@@ -14,7 +14,7 @@
     <div class="header-brand">
       <span class="header-logo">🌍</span>
       <div>
-        <h1>Travel OS</h1>
+        <h1>YourIdealTravel</h1>
         <span class="header-sub">Live trip calculator</span>
       </div>
     </div>
@@ -41,6 +41,17 @@
         <div class="big-value" id="days-display">14 days</div>
         <input type="range" class="range-input" id="days-slider" min="5" max="30" step="1" value="14">
         <input type="number" class="num-input" id="days-number" min="5" max="30" value="14">
+      </div>
+
+      <div class="settings-section">
+        <div class="section-label">Travelers</div>
+        <div class="big-value" id="travelers-display">1 person</div>
+        <div class="travelers-row">
+          <button class="travelers-btn" id="travelers-dec">−</button>
+          <input type="number" class="num-input travelers-num" id="travelers-input" min="1" max="6" value="1">
+          <button class="travelers-btn" id="travelers-inc">+</button>
+        </div>
+        <div class="style-hint" id="travelers-hint">Flights ×1, accommodation per person</div>
       </div>
 
       <div class="settings-section">
