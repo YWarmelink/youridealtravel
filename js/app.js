@@ -960,6 +960,26 @@ function syncDays(val) {
 }
 
 // ─────────────────────────────────────────────────────────────
+// THEME
+// ─────────────────────────────────────────────────────────────
+function initTheme() {
+  const saved = localStorage.getItem('yit_theme') || 'light';
+  applyTheme(saved);
+}
+
+function toggleTheme() {
+  const isDark = document.documentElement.dataset.theme === 'dark';
+  applyTheme(isDark ? 'light' : 'dark');
+}
+
+function applyTheme(theme) {
+  document.documentElement.dataset.theme = theme === 'dark' ? 'dark' : '';
+  localStorage.setItem('yit_theme', theme);
+  const btn = document.getElementById('theme-toggle');
+  if (btn) btn.textContent = theme === 'dark' ? '☀️' : '🌙';
+}
+
+// ─────────────────────────────────────────────────────────────
 // BOOT
 // ─────────────────────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', () => {
@@ -967,6 +987,8 @@ document.addEventListener('DOMContentLoaded', () => {
   initMap();
   updateStyleHints();
   syncTravelers(U.travelers);
+  initTheme();
+  document.getElementById('theme-toggle').addEventListener('click', toggleTheme);
 
   // Budget
   document.getElementById('budget-slider').addEventListener('input', e => { syncBudget(e.target.value); markPending(); });
