@@ -137,6 +137,7 @@ let U = {
   comboOnly: false,
   avoidLong: false,
   travelers: 1,
+  sharedAccom: true,
   adventure: 6, food: 9, nature: 7, beach: 6, nightlife: 4, culture: 10,
   prefWeight: 2, budgetWeight: 5, fatigueWeight: 2,
 };
@@ -430,8 +431,10 @@ function calcTrip(t) {
     ? num(cdB[styleCol]) * luxMult
     : num(t.daily_cost_b) * (STYLE_MULT[U.travelStyle] || 1.35);
 
-  // Travelers: flights ×N, daily costs shared (accommodation split)
-  const travelersDaily = 0.55 + 0.45 * U.travelers;
+  // Travelers: flights ×N, daily costs depend on shared/separate accommodation
+  const travelersDaily = U.sharedAccom
+    ? 0.55 + 0.45 * U.travelers   // shared room: accommodation cost split
+    : U.travelers;                  // separate rooms: each pays full daily rate
 
   // Flight costs — use per-route per-season values when available, else fall back
   let flightPerPerson;
@@ -604,7 +607,8 @@ function initMap() {
     zoomControl: true,
     scrollWheelZoom: false,
     attributionControl: false,
-  }).setView([25, 30], 2);
+  });
+  _leafletMap.fitBounds([[-58, -170], [72, 170]]);
   L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
     maxZoom: 10,
   }).addTo(_leafletMap);
@@ -835,10 +839,7 @@ function buildSliders() {
   const styleContainer = document.getElementById('style-sliders');
   styleContainer.innerHTML = STYLES.map(s => `
     <div class="style-row">
-      <div class="style-label-wrap">
-        <span class="style-label">${s.icon} ${s.label}</span>
-        <span class="style-hint-small">${s.hint}</span>
-      </div>
+      <span class="style-label">${s.icon} ${s.label}</span>
       <input type="range" class="style-slider" id="sl-${s.uKey}" min="0" max="10" step="1" value="${pendingU[s.uKey]}">
       <span class="style-val" id="sv-${s.uKey}">${pendingU[s.uKey]}</span>
     </div>
@@ -894,6 +895,8 @@ function refreshUI() {
   if (spEl) spEl.value = U.seasonPref;
 
   document.getElementById('avoid-long').checked = U.avoidLong;
+  document.getElementById('accom-shared').classList.toggle('active', U.sharedAccom);
+  document.getElementById('accom-separate').classList.toggle('active', !U.sharedAccom);
   document.getElementById('max-1').classList.toggle('active', U.maxCountries === 1);
   document.getElementById('max-2').classList.toggle('active', U.maxCountries === 2 && !U.comboOnly);
   document.getElementById('max-combo').classList.toggle('active', U.comboOnly);
@@ -922,11 +925,20 @@ function syncTravelers(val) {
   if (el) el.textContent = labels[v] || `${v} travelers`;
   const inp = document.getElementById('travelers-input');
   if (inp) inp.value = v;
+  const accomRow = document.getElementById('accom-row');
+  if (accomRow) accomRow.style.display = v > 1 ? '' : 'none';
+  updateTravelersHint(v, pendingU.sharedAccom);
+}
+
+function updateTravelersHint(v, shared) {
   const hint = document.getElementById('travelers-hint');
-  if (hint) {
-    hint.textContent = v === 1
-      ? 'Total trip cost for 1 person'
-      : `Total trip cost for ${v} people — accommodation shared`;
+  if (!hint) return;
+  if (v === 1) {
+    hint.textContent = 'Total trip cost for 1 person';
+  } else if (shared) {
+    hint.textContent = `Total for ${v} people — shared room (accommodation split)`;
+  } else {
+    hint.textContent = `Total for ${v} people — separate rooms (each pays full daily rate)`;
   }
 }
 
@@ -962,6 +974,17 @@ document.addEventListener('DOMContentLoaded', () => {
   // Days
   document.getElementById('days-slider').addEventListener('input', e => { syncDays(e.target.value); markPending(); });
   document.getElementById('days-number').addEventListener('input', e => { syncDays(e.target.value); markPending(); });
+
+  // Accommodation type
+  const setAccom = shared => {
+    pendingU.sharedAccom = shared;
+    document.getElementById('accom-shared').classList.toggle('active', shared);
+    document.getElementById('accom-separate').classList.toggle('active', !shared);
+    updateTravelersHint(pendingU.travelers, shared);
+    markPending();
+  };
+  document.getElementById('accom-shared').addEventListener('click',   () => setAccom(true));
+  document.getElementById('accom-separate').addEventListener('click', () => setAccom(false));
 
   // Travel style
   // Travelers

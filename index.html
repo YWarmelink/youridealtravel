@@ -51,7 +51,11 @@
           <input type="number" class="travelers-num" id="travelers-input" min="1" max="6" value="1">
           <button class="travelers-btn" id="travelers-inc">+</button>
         </div>
-        <div class="style-hint" id="travelers-hint">Costs calculated per person</div>
+        <div class="btn-group accom-row" id="accom-row" style="display:none">
+          <button class="group-btn active" id="accom-shared">Shared room</button>
+          <button class="group-btn" id="accom-separate">Separate rooms</button>
+        </div>
+        <div class="style-hint" id="travelers-hint">Total trip cost for 1 person</div>
       </div>
 
       <div class="settings-section">
@@ -145,6 +149,7 @@
       <div class="settings-section">
         <div class="section-label">Travel style weights</div>
         <div id="style-sliders"></div>
+        <p class="adv-hint">How much each travel style matters to you. Higher = destinations strong in that category rank better.</p>
       </div>
 
       <details class="adv-section">
