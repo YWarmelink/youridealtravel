@@ -365,6 +365,39 @@ function getCountrySeason(countryName, month) {
   return 'mid';
 }
 
+// What % of the travel window has good conditions for this country (0–100)
+// "Good" depends on seasonPref: High = only peak, Mid = peak+mid, Low = avoid peak
+function countrySeasonScore(country, startM, endM, seasonPref) {
+  if (seasonPref === 'No') return 50;
+  const cd = countryData[country];
+  if (!cd) return 50;
+
+  const window = [];
+  let m = startM;
+  for (let i = 0; i < 12; i++) {
+    window.push(m);
+    if (m === endM) break;
+    m = (m % 12) + 1;
+  }
+
+  const inList = (s, mo) => {
+    if (!s) return false;
+    const abbr = MONTH_ABBR[mo];
+    return s.split(',').some(x => x.trim() === abbr);
+  };
+
+  const good = window.filter(mo => {
+    const isHigh = inList(cd.high_season, mo);
+    const isMid  = inList(cd.mid_season, mo);
+    if (seasonPref === 'High') return isHigh;
+    if (seasonPref === 'Mid')  return isHigh || isMid;
+    if (seasonPref === 'Low')  return !isHigh;
+    return true;
+  });
+
+  return (good.length / window.length) * 100;
+}
+
 // Cost of one flight leg based on U.startMonth and destination country's season
 function flightLegCost(from, to) {
   const fd = flightData[`${from}-${to}`];
@@ -449,8 +482,12 @@ function calcTrip(t) {
     rawBudget:  budgetRaw,
     rawPref:    prefRaw,
     rawFatigue: 100 - num(t.fatigue_penalty),
-    rawSeason:  num(t.total_season_score),
-    rawRegion:  num(t.region_bonus),
+    rawSeason:  Object.keys(countryData).length > 0
+      ? (hasB
+          ? (countrySeasonScore(t.country_a, U.startMonth, U.endMonth, U.seasonPref) +
+             countrySeasonScore(t.country_b, U.startMonth, U.endMonth, U.seasonPref)) / 2
+          : countrySeasonScore(t.country_a, U.startMonth, U.endMonth, U.seasonPref))
+      : num(t.total_season_score),
     rawWish:    num(t.total_wishlist_bonus),
   };
 }
