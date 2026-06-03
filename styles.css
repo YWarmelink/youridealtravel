@@ -33,6 +33,11 @@
 
 *, *::before, *::after { box-sizing: border-box; }
 
+html, body {
+  overflow-x: hidden;
+  max-width: 100%;
+}
+
 body {
   margin: 0;
   font-family: 'Inter', -apple-system, sans-serif;
@@ -591,15 +596,54 @@ body {
 
 /* ── Responsive ──────────────────────────────────────────── */
 @media (max-width: 800px) {
-  .app-layout { grid-template-columns: 1fr; }
-  .settings-panel { border-right: none; border-bottom: 1px solid var(--border); }
-  .results-panel { padding: 16px; }
+  .app-layout {
+    grid-template-columns: 1fr;
+    width: 100%;
+  }
+  .settings-panel {
+    border-right: none;
+    border-bottom: 1px solid var(--border);
+    overflow-x: hidden;
+  }
+  .results-panel { padding: 16px; overflow-x: hidden; }
   .header-sub { display: none; }
 }
-@media (max-width: 480px) {
-  .filter-tabs { gap: 4px; }
-  .tab { padding: 6px 10px; font-size: 11px; }
+
+@media (max-width: 600px) {
+  /* Header: compact on small screens */
+  .app-header { padding: 10px 14px; gap: 8px; }
+  .header-brand h1 { font-size: 15px; }
+  .header-logo { font-size: 20px; }
+  .sync-status { display: none; }                /* hide "Synced …" text */
+  .sync-btn { padding: 6px 10px; font-size: 11px; }
+  .sync-label { display: none; }
+
+  /* Filters: scrollable row instead of wrapping */
+  .filter-tabs {
+    display: flex;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    gap: 6px;
+    padding-bottom: 4px;
+    scrollbar-width: none;
+  }
+  .filter-tabs::-webkit-scrollbar { display: none; }
+  .tab { padding: 6px 12px; font-size: 11px; flex-shrink: 0; }
+
+  /* Cards: single column */
   .trip-grid { grid-template-columns: 1fr; }
+
+  /* Results top: stack vertically */
+  .results-top { flex-direction: column; align-items: flex-start; gap: 10px; }
+  .results-right { width: 100%; justify-content: space-between; }
+
+  /* Map: slightly shorter */
+  #world-map { height: 300px; }
+
+  /* Compare panel: smaller padding */
+  .compare-panel { padding: 10px 14px 14px; }
+  .compare-cols { grid-template-columns: 1fr; }
 }
 
 /* ── Travelers ───────────────────────────────────────────── */
