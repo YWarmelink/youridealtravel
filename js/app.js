@@ -83,12 +83,12 @@ const COUNTRY_COORDS = {
 // STYLE & FLAG DEFINITIONS
 // ─────────────────────────────────────────────────────────────
 const STYLES = [
-  { key: 'adventure_score', label: 'Adventure', icon: '🧗', uKey: 'adventure' },
-  { key: 'food_score',      label: 'Food',      icon: '🍜', uKey: 'food'      },
-  { key: 'nature_score',    label: 'Nature',    icon: '🏔', uKey: 'nature'    },
-  { key: 'beach_score',     label: 'Beach',     icon: '🏖', uKey: 'beach'     },
-  { key: 'nightlife_score', label: 'Nightlife', icon: '🌃', uKey: 'nightlife' },
-  { key: 'culture_score',   label: 'Culture',   icon: '🏛', uKey: 'culture'   },
+  { key: 'adventure_score', label: 'Adventure', icon: '🧗', uKey: 'adventure', hint: 'Hiking, climbing & outdoor activities' },
+  { key: 'food_score',      label: 'Food',      icon: '🍜', uKey: 'food',      hint: 'Local cuisine, street food & dining'   },
+  { key: 'nature_score',    label: 'Nature',    icon: '🏔', uKey: 'nature',    hint: 'Landscapes, wildlife & national parks' },
+  { key: 'beach_score',     label: 'Beach',     icon: '🏖', uKey: 'beach',     hint: 'Coastline, swimming & water sports'    },
+  { key: 'nightlife_score', label: 'Nightlife', icon: '🌃', uKey: 'nightlife', hint: 'Bars, clubs & evening entertainment'   },
+  { key: 'culture_score',   label: 'Culture',   icon: '🏛', uKey: 'culture',   hint: 'History, museums & architecture'       },
 ];
 
 const RANK_WEIGHTS = [
@@ -551,7 +551,7 @@ function calcAndRank() {
   scored.forEach((c, i) => {
     c.rank    = i + 1;
     const pct = (n - i) / n * 100;
-    c.tier    = pct >= 70 ? 'TOP TIER' : pct >= 40 ? 'GOOD' : 'MID';
+    c.tier    = pct >= 75 ? 'TOP TIER' : pct >= 50 ? 'GOOD' : pct >= 25 ? 'MID' : 'LOW';
     c.budgetScore = Math.max(0, Math.min(100, c.rawBudget));
   });
 
@@ -586,7 +586,7 @@ function applyFilter(ranked) {
 // ─────────────────────────────────────────────────────────────
 // MAP
 // ─────────────────────────────────────────────────────────────
-const TIER_ORDER = { 'TOP TIER': 0, 'GOOD': 1, 'MID': 2 };
+const TIER_ORDER = { 'TOP TIER': 0, 'GOOD': 1, 'MID': 2, 'LOW': 3 };
 
 function initMap() {
   if (_leafletMap) return;
@@ -618,7 +618,7 @@ function updateMap(ranked) {
   Object.entries(countryBest).forEach(([country, c]) => {
     const coords = COUNTRY_COORDS[country];
     if (!coords) return;
-    const color = c.tier === 'TOP TIER' ? '#f59e0b' : c.tier === 'GOOD' ? '#22c55e' : '#3b82f6';
+    const color = c.tier === 'TOP TIER' ? '#22c55e' : c.tier === 'GOOD' ? '#eab308' : c.tier === 'MID' ? '#f97316' : '#ef4444';
     const marker = L.circleMarker(coords, {
       radius: 9,
       fillColor: color,
@@ -637,9 +637,10 @@ function updateMap(ranked) {
 // RENDERING
 // ─────────────────────────────────────────────────────────────
 const TIER_CFG = {
-  'TOP TIER': { pill: 'pill-top',  card: 'tier-top-card',  label: '🏆 Top Tier' },
-  'GOOD':     { pill: 'pill-good', card: 'tier-good-card', label: '⭐ Good'      },
-  'MID':      { pill: 'pill-mid',  card: 'tier-mid-card',  label: '👍 Mid'       },
+  'TOP TIER': { pill: 'pill-top',  card: 'tier-top-card',  label: '✦ Top Tier' },
+  'GOOD':     { pill: 'pill-good', card: 'tier-good-card', label: '● Good'      },
+  'MID':      { pill: 'pill-mid',  card: 'tier-mid-card',  label: '● Mid'       },
+  'LOW':      { pill: 'pill-low',  card: 'tier-low-card',  label: '● Low'       },
 };
 
 function flag(country) { return FLAGS[country] || '🌍'; }
@@ -824,7 +825,10 @@ function buildSliders() {
   const styleContainer = document.getElementById('style-sliders');
   styleContainer.innerHTML = STYLES.map(s => `
     <div class="style-row">
-      <span class="style-label">${s.icon} ${s.label}</span>
+      <div class="style-label-wrap">
+        <span class="style-label">${s.icon} ${s.label}</span>
+        <span class="style-hint-small">${s.hint}</span>
+      </div>
       <input type="range" class="style-slider" id="sl-${s.uKey}" min="0" max="10" step="1" value="${pendingU[s.uKey]}">
       <span class="style-val" id="sv-${s.uKey}">${pendingU[s.uKey]}</span>
     </div>
