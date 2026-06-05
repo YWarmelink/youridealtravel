@@ -616,11 +616,9 @@ function calcBudgetScore(cost, budget) {
   return Math.max(0, 50 * Math.pow(1 - overshoot, 2));
 }
 
-function rankCalced(calced) {
+function rankCalced(calced, opts = {}) {
   if (calced.length === 0) return [];
 
-  // Per-category percentile ranks — each style dimension ranked independently
-  // so that weight changes have real impact on who rises to the top
   const pctAdventure = pctRanks(calced.map(c => c.catScores.adventure));
   const pctFood      = pctRanks(calced.map(c => c.catScores.food));
   const pctNature    = pctRanks(calced.map(c => c.catScores.nature));
@@ -629,12 +627,12 @@ function rankCalced(calced) {
   const pctCulture   = pctRanks(calced.map(c => c.catScores.culture));
 
   const totalStyleWeight = U.adventure + U.food + U.nature + U.beach + U.nightlife + U.culture;
-
   const pctFat    = pctRanks(calced.map(c => c.rawFatigue));
   const pctSeason = pctRanks(calced.map(c => c.rawSeason));
   const seasonW   = SEASON_WEIGHT[U.seasonPref] ?? 1.0;
+  const bw        = opts.budgetWeight ?? U.budgetWeight;
+
   const scored = calced.map((c, i) => {
-    // Weighted average of per-category percentile scores → 0-100
     const prefScore = totalStyleWeight > 0
       ? (U.adventure * pctAdventure[i] +
          U.food      * pctFood[i]      +
@@ -643,15 +641,15 @@ function rankCalced(calced) {
          U.nightlife * pctNightlife[i] +
          U.culture   * pctCulture[i])  / totalStyleWeight
       : 50;
-    const budgetScore = calcBudgetScore(c.cost, U.budget);
-    const base = U.prefWeight  * prefScore    +
-                 U.budgetWeight * budgetScore  +
-                 U.fatigueWeight * pctFat[i]  +
-                 seasonW        * pctSeason[i];
+    const rankBudgetScore = calcBudgetScore(c.cost, U.budget);
+    const base = U.prefWeight   * prefScore      +
+                 bw             * rankBudgetScore +
+                 U.fatigueWeight * pctFat[i]     +
+                 seasonW         * pctSeason[i];
     const overstayFactor = 1 / (1 + (c.rawOverstay || 0));
     const comboFactor    = c.hasC ? 1.15 : c.hasB ? 1.08 : 1.0;
     const finalScore     = base * overstayFactor * comboFactor;
-    return { ...c, pctPref: prefScore, budgetScore, finalScore };
+    return { ...c, pctPref: prefScore, rankBudgetScore, pctFatigue: pctFat[i], pctSeasonScore: pctSeason[i], finalScore };
   });
   scored.sort((a, b) => b.finalScore - a.finalScore);
   const n = scored.length;
@@ -713,7 +711,7 @@ function applyFilter(ranked) {
       if (U.maxCountries === 2 && hasC)  return false;
       return true;
     });
-    return rankCalced(allowed.map(t => calcTripIdeal(t)).filter(c => c.feasible));
+    return rankCalced(allowed.map(t => calcTripIdeal(t)).filter(c => c.feasible), { budgetWeight: 0 });
   }
 
   const all = [...ranked];
@@ -776,6 +774,17 @@ function updateMap(ranked) {
     });
   });
 
+  // Verbindingslijnen voor top-tier combo trips
+  const NL_COORD = [52.37, 4.89];
+  ranked.filter(c => c.hasB && (c.tier === 'TOP TIER' || c.tier === 'GOOD')).forEach(c => {
+    const pA = COUNTRY_COORDS[c._t.country_a];
+    const pB = COUNTRY_COORDS[c._t.country_b];
+    const pC = c.hasC ? COUNTRY_COORDS[c._t.country_c] : null;
+    if (!pA || !pB) return;
+    const pts = [NL_COORD, pA, pB, ...(pC ? [pC] : []), NL_COORD];
+    L.polyline(pts, { color: '#6366f1', weight: 1.5, opacity: 0.3, dashArray: '6,5' }).addTo(_markerGroup);
+  });
+
   Object.entries(countryBest).forEach(([country, c]) => {
     const coords = COUNTRY_COORDS[country];
     if (!coords) return;
@@ -831,6 +840,19 @@ function renderCard(c) {
     daysHtml = `<div class="card-days"><span class="days-highlight">${c.daysA} days</span> in ${t.country_a}</div>`;
   }
 
+  // Ideal days hint (from COUNTRIES data)
+  const cdAr = countryData[t.country_a];
+  const cdBr = t.country_b ? countryData[t.country_b] : null;
+  const cdCr = t.country_c ? countryData[t.country_c] : null;
+  let idealHtml = '';
+  if (cdAr) {
+    const iA = num(cdAr.ideal_days), iB = cdBr ? num(cdBr.ideal_days) : 0, iC = cdCr ? num(cdCr.ideal_days) : 0;
+    const idealTotal = iA + iB + iC;
+    if (idealTotal > 0 && Math.abs(idealTotal - (c.daysA + c.daysB + (c.daysC || 0))) > 1) {
+      idealHtml = `<div class="ideal-hint">Ideal: ${idealTotal} days total</div>`;
+    }
+  }
+
   const barW     = Math.max(3, c.budgetScore);
   const barClass = c.costFit === 'OVER' ? 'fill-over'
                  : c.budgetScore >= 70   ? 'fill-great'
@@ -878,6 +900,7 @@ function renderCard(c) {
       </div>
       ${U.travelers > 1 ? `<div class="cost-pp">€${Math.round(c.cost).toLocaleString('nl-NL')} <span class="cost-pp-label">total</span></div>` : ''}
       ${daysHtml}
+      ${idealHtml}
       <div class="budget-bar-wrap">
         <div class="budget-bar">
           <div class="budget-fill ${barClass}" style="width:${barW}%"></div>
@@ -888,6 +911,28 @@ function renderCard(c) {
       <div class="card-indicators">
         <span class="indicator ${seasonCls}">${seasonLbl}</span>
         <span class="indicator ${fatCls}">${fatLbl}</span>
+      </div>
+      <div class="score-breakdown">
+        <div class="sb-item">
+          <span class="sb-lbl">Style</span>
+          <div class="sb-bar"><div class="sb-fill sb-style" style="width:${Math.round(c.pctPref)}%"></div></div>
+          <span class="sb-num">${Math.round(c.pctPref)}</span>
+        </div>
+        <div class="sb-item">
+          <span class="sb-lbl">Budget</span>
+          <div class="sb-bar"><div class="sb-fill sb-budget ${c.costFit === 'OVER' ? 'sb-over' : ''}" style="width:${Math.round(c.rankBudgetScore || c.budgetScore)}%"></div></div>
+          <span class="sb-num">${Math.round(c.rankBudgetScore || c.budgetScore)}</span>
+        </div>
+        <div class="sb-item">
+          <span class="sb-lbl">Season</span>
+          <div class="sb-bar"><div class="sb-fill sb-season" style="width:${Math.round(c.pctSeasonScore || 0)}%"></div></div>
+          <span class="sb-num">${Math.round(c.pctSeasonScore || 0)}</span>
+        </div>
+        <div class="sb-item">
+          <span class="sb-lbl">Fatigue</span>
+          <div class="sb-bar"><div class="sb-fill sb-fatigue" style="width:${Math.round(c.pctFatigue || 0)}%"></div></div>
+          <span class="sb-num">${Math.round(c.pctFatigue || 0)}</span>
+        </div>
       </div>
     </div>
   `;
@@ -1290,6 +1335,18 @@ document.addEventListener('DOMContentLoaded', () => {
     toggleBtn.textContent = isHidden ? '🗺 Hide map' : '🗺 Show map';
     if (isHidden && _leafletMap) _leafletMap.invalidateSize();
   });
+
+  // Mobile: inklapbare sidebar-secties
+  if (window.innerWidth <= 800) {
+    document.querySelectorAll('.settings-section').forEach((section, idx) => {
+      const label = section.querySelector('.section-label');
+      if (!label) return;
+      label.classList.add('collapsible-label');
+      // Eerste drie secties (budget/days/travelers) standaard open, rest dicht
+      if (idx >= 3) section.classList.add('sec-collapsed');
+      label.addEventListener('click', () => section.classList.toggle('sec-collapsed'));
+    });
+  }
 
   // Load from cache on start
   const hadCache = loadFromCache();

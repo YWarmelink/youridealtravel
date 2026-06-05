@@ -517,6 +517,38 @@ body {
 .fat-mid     { background: #fefce8; color: #92400e; }
 .fat-high    { background: #fee2e2; color: #991b1b; }
 
+/* ── Score breakdown ─────────────────────────────────────── */
+.score-breakdown {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 5px 10px;
+  padding-top: 10px;
+  border-top: 1px solid var(--bg-muted);
+  margin-top: -2px;
+}
+.sb-item {
+  display: grid;
+  grid-template-columns: 38px 1fr 22px;
+  align-items: center;
+  gap: 4px;
+}
+.sb-lbl { font-size: 9px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.04em; }
+.sb-num { font-size: 9px; font-weight: 700; color: var(--text-sec); text-align: right; }
+.sb-bar { height: 4px; background: var(--bg-muted); border-radius: 2px; overflow: hidden; }
+.sb-fill { height: 100%; border-radius: 2px; transition: width 0.3s ease; }
+.sb-style   { background: #6366f1; }
+.sb-budget  { background: #22c55e; }
+.sb-over    { background: #ef4444; }
+.sb-season  { background: #f59e0b; }
+.sb-fatigue { background: #3b82f6; }
+
+/* ── Ideal days hint ─────────────────────────────────────── */
+.ideal-hint {
+  font-size: 10px;
+  color: var(--text-muted);
+  font-style: italic;
+}
+
 /* ── Select ──────────────────────────────────────────────── */
 .setting-select {
   width: 100%;
@@ -632,9 +664,31 @@ body {
     border-right: none;
     border-bottom: 1px solid var(--border);
     overflow-x: hidden;
+    gap: 0;
   }
+  .settings-section {
+    border-bottom: 1px solid var(--bg-muted);
+    padding: 10px 0;
+  }
+  .settings-divider { display: none; }
   .results-panel { padding: 16px; overflow-x: hidden; }
   .header-sub { display: none; }
+
+  /* Inklapbare secties op mobiel */
+  .collapsible-label {
+    cursor: pointer;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .collapsible-label::after {
+    content: '▾';
+    font-size: 10px;
+    opacity: 0.5;
+    transition: transform 0.2s;
+  }
+  .sec-collapsed .collapsible-label::after { transform: rotate(-90deg); }
+  .sec-collapsed > *:not(.section-label) { display: none !important; }
 }
 
 @media (max-width: 600px) {
