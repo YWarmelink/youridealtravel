@@ -857,10 +857,10 @@ function renderCard(c) {
   const cdBr = t.country_b ? countryData[t.country_b] : null;
   const cdCr = t.country_c ? countryData[t.country_c] : null;
   let idealHtml = '';
-  if (cdAr) {
+  if (currentFilter === 'idealtrip' && cdAr) {
     const iA = num(cdAr.ideal_days), iB = cdBr ? num(cdBr.ideal_days) : 0, iC = cdCr ? num(cdCr.ideal_days) : 0;
     const idealTotal = iA + iB + iC;
-    if (idealTotal > 0 && Math.abs(idealTotal - (c.daysA + c.daysB + (c.daysC || 0))) > 1) {
+    if (idealTotal > 0) {
       idealHtml = `<div class="ideal-hint">Ideal: ${idealTotal} days total</div>`;
     }
   }
