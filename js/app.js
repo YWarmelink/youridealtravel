@@ -832,7 +832,7 @@ function topStyles(c) {
     .slice(0, 2);
 }
 
-function renderCard(c) {
+function renderCard(c, displayRank) {
   const t    = c._t;
   const tier = TIER_CFG[c.tier] || TIER_CFG['MID'];
 
@@ -889,7 +889,7 @@ function renderCard(c) {
   return `
     <div class="trip-card ${tier.card}" data-trip-key="${t.trip_key}">
       <div class="card-header">
-        <span class="rank-num">#${c.rank}</span>
+        <span class="rank-num">#${displayRank ?? c.rank}</span>
         <span class="tier-pill ${tier.pill}">${tier.label}</span>
         <div class="card-header-right">
           ${c.hasC ? '<span class="combo-pill">✈ Triple</span>' : c.hasB ? '<span class="combo-pill">✈ Combo</span>' : ''}
@@ -945,7 +945,7 @@ function recalculate() {
   if (filtered.length === 0) {
     grid.innerHTML = '<div class="empty-msg">No trips match your current settings. Try relaxing some constraints.</div>';
   } else {
-    grid.innerHTML = filtered.map(c => renderCard(c)).join('');
+    grid.innerHTML = filtered.map((c, i) => renderCard(c, i + 1)).join('');
   }
 
   updateMap(ranked);
