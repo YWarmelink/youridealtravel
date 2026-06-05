@@ -35,8 +35,6 @@ const LUXURY_MULT = 1.45;  // ~same ratio as original Luxury/Comfort (2.60/1.80)
 // Month number → 3-letter name (matches season strings in countries sheet)
 const MONTH_ABBR = ['', 'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
-// Season preference → weight on total_season_score in ranking
-const SEASON_WEIGHT = { High: 2.0, Mid: 1.0, Low: 0.3, No: 0.0 };
 
 const MONTH_NAMES = {
   January:1, February:2, March:3, April:4, May:5, June:6,
@@ -92,9 +90,9 @@ const STYLES = [
 ];
 
 const RANK_WEIGHTS = [
-  { uKey: 'prefWeight',    label: 'Travel style', default: 8,  min: 0, max: 10, step: 1 },
-  { uKey: 'budgetWeight',  label: 'Budget fit',   default: 5,  min: 0, max: 10, step: 1 },
-  { uKey: 'fatigueWeight', label: 'Low fatigue',  default: 2,  min: 0, max: 10, step: 1 },
+  { uKey: 'prefWeight',   label: 'Style match',  default: 8, min: 0, max: 10, step: 1 },
+  { uKey: 'budgetWeight', label: 'Budget fit',   default: 5, min: 0, max: 10, step: 1 },
+  { uKey: 'seasonWeight', label: 'Season fit',   default: 3, min: 0, max: 10, step: 1 },
 ];
 
 const FLAGS = {
@@ -138,7 +136,7 @@ let U = {
   travelers: 1,
   sharedAccom: true,
   adventure: 7, food: 10, nature: 8, beach: 6, nightlife: 3, culture: 9,
-  prefWeight: 8, budgetWeight: 5, fatigueWeight: 2,
+  prefWeight: 8, budgetWeight: 5, seasonWeight: 3, fatigueWeight: 2,
 };
 
 // Draft settings — updated by all inputs; applied to U on Apply click
@@ -209,10 +207,10 @@ function updateStyleHints() {
   if (sh) sh.textContent = styleTexts[pendingU.travelStyle] || '';
 
   const seasonTexts = {
-    High: 'Prioritises destinations in peak season',
-    Mid:  'Prioritises destinations in mid season',
-    Low:  'Prioritises destinations in low season',
-    No:   'Season not considered in ranking',
+    High: 'Favours destinations in peak season',
+    Mid:  'Favours destinations in mid or peak season',
+    Low:  'Favours destinations in low season (cheaper, quieter)',
+    No:   'Season type not considered',
   };
   const seH = document.getElementById('season-hint');
   if (seH) seH.textContent = seasonTexts[pendingU.seasonPref] || '';
@@ -629,7 +627,7 @@ function rankCalced(calced, opts = {}) {
   const totalStyleWeight = U.adventure + U.food + U.nature + U.beach + U.nightlife + U.culture;
   const pctFat    = pctRanks(calced.map(c => c.rawFatigue));
   const pctSeason = pctRanks(calced.map(c => c.rawSeason));
-  const seasonW   = SEASON_WEIGHT[U.seasonPref] ?? 1.0;
+  const seasonW   = opts.seasonWeight ?? U.seasonWeight;
   const bw        = opts.budgetWeight ?? U.budgetWeight;
 
   const scored = calced.map((c, i) => {
@@ -926,7 +924,6 @@ function renderCard(c) {
       <div class="score-breakdown">
         <div class="sb-item"><span class="sb-lbl">Style</span>  <span class="sb-stars">${toStars(c.pctPref)}</span></div>
         <div class="sb-item"><span class="sb-lbl">Budget</span> <span class="sb-stars ${c.costFit === 'OVER' ? 'sb-stars-over' : ''}">${toStars(c.rankBudgetScore ?? c.budgetScore)}</span></div>
-        <div class="sb-item"><span class="sb-lbl">Season</span> <span class="sb-stars">${toStars(c.pctSeasonScore || 0)}</span></div>
         <div class="sb-item"><span class="sb-lbl">Fatigue</span><span class="sb-stars">${toStars(c.pctFatigue || 0)}</span></div>
       </div>
     </div>
@@ -1037,7 +1034,13 @@ function buildSliders() {
       <input type="range" class="style-slider" id="sl-${s.uKey}" min="0" max="10" step="1" value="${pendingU[s.uKey]}">
       <span class="style-val" id="sv-${s.uKey}">${pendingU[s.uKey]}</span>
     </div>
-  `).join('');
+  `).join('') + `
+    <div class="style-row style-row-sep">
+      <span class="style-label">😌 Easy travel</span>
+      <input type="range" class="style-slider" id="sl-fatigueWeight" min="0" max="10" step="1" value="${pendingU.fatigueWeight}">
+      <span class="style-val" id="sv-fatigueWeight">${pendingU.fatigueWeight}</span>
+    </div>
+  `;
 
   STYLES.forEach(s => {
     const slider = document.getElementById(`sl-${s.uKey}`);
@@ -1047,6 +1050,12 @@ function buildSliders() {
       valEl.textContent = slider.value;
       markPending();
     });
+  });
+
+  document.getElementById('sl-fatigueWeight').addEventListener('input', e => {
+    pendingU.fatigueWeight = +e.target.value;
+    document.getElementById('sv-fatigueWeight').textContent = e.target.value;
+    markPending();
   });
 
   const rankContainer = document.getElementById('rank-sliders');
@@ -1113,6 +1122,10 @@ function refreshUI() {
     const valEl  = document.getElementById(`sv-${s.uKey}`);
     if (slider) { slider.value = U[s.uKey]; if (valEl) valEl.textContent = U[s.uKey]; }
   });
+
+  const fSlider = document.getElementById('sl-fatigueWeight');
+  const fVal    = document.getElementById('sv-fatigueWeight');
+  if (fSlider) { fSlider.value = U.fatigueWeight; if (fVal) fVal.textContent = U.fatigueWeight; }
 
   RANK_WEIGHTS.forEach(w => {
     const slider = document.getElementById(`rw-${w.uKey}`);
