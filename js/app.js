@@ -550,20 +550,40 @@ function calcBudgetScore(cost, budget) {
 
 function rankCalced(calced) {
   if (calced.length === 0) return [];
-  const pctPref   = pctRanks(calced.map(c => c.rawPref));
+
+  // Per-category percentile ranks — each style dimension ranked independently
+  // so that weight changes have real impact on who rises to the top
+  const pctAdventure = pctRanks(calced.map(c => num(c._t.adventure_score)));
+  const pctFood      = pctRanks(calced.map(c => num(c._t.food_score)));
+  const pctNature    = pctRanks(calced.map(c => num(c._t.nature_score)));
+  const pctBeach     = pctRanks(calced.map(c => num(c._t.beach_score)));
+  const pctNightlife = pctRanks(calced.map(c => num(c._t.nightlife_score)));
+  const pctCulture   = pctRanks(calced.map(c => num(c._t.culture_score)));
+
+  const totalStyleWeight = U.adventure + U.food + U.nature + U.beach + U.nightlife + U.culture;
+
   const pctFat    = pctRanks(calced.map(c => c.rawFatigue));
   const pctSeason = pctRanks(calced.map(c => c.rawSeason));
   const seasonW   = SEASON_WEIGHT[U.seasonPref] ?? 1.0;
   const scored = calced.map((c, i) => {
+    // Weighted average of per-category percentile scores → 0-100
+    const prefScore = totalStyleWeight > 0
+      ? (U.adventure * pctAdventure[i] +
+         U.food      * pctFood[i]      +
+         U.nature    * pctNature[i]    +
+         U.beach     * pctBeach[i]     +
+         U.nightlife * pctNightlife[i] +
+         U.culture   * pctCulture[i])  / totalStyleWeight
+      : 50;
     const budgetScore = calcBudgetScore(c.cost, U.budget);
-    const base = U.prefWeight  * pctPref[i]   +
-                 U.budgetWeight * budgetScore   +
-                 U.fatigueWeight * pctFat[i]   +
+    const base = U.prefWeight  * prefScore    +
+                 U.budgetWeight * budgetScore  +
+                 U.fatigueWeight * pctFat[i]  +
                  seasonW        * pctSeason[i];
     const overstayFactor = 1 / (1 + (c.rawOverstay || 0));
     const comboFactor    = c.hasB ? 1.08 : 1.0;
     const finalScore     = base * overstayFactor * comboFactor;
-    return { ...c, pctPref: pctPref[i], budgetScore, finalScore };
+    return { ...c, pctPref: prefScore, budgetScore, finalScore };
   });
   scored.sort((a, b) => b.finalScore - a.finalScore);
   const n = scored.length;
