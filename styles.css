@@ -492,7 +492,7 @@ body {
   border: 1px solid var(--border);
   color: var(--text-sec);
 }
-.style-tag-score { font-weight: 700; color: #6366f1; }
+.style-tag-score { font-size: 10px; color: #f59e0b; letter-spacing: 0.5px; line-height: 1; }
 
 /* Bottom indicators */
 .card-indicators {
@@ -521,26 +521,21 @@ body {
 .score-breakdown {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 5px 10px;
+  gap: 4px 8px;
   padding-top: 10px;
   border-top: 1px solid var(--bg-muted);
   margin-top: -2px;
 }
 .sb-item {
-  display: grid;
-  grid-template-columns: 38px 1fr 22px;
+  display: flex;
   align-items: center;
+  justify-content: space-between;
   gap: 4px;
 }
-.sb-lbl { font-size: 9px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.04em; }
-.sb-num { font-size: 9px; font-weight: 700; color: var(--text-sec); text-align: right; }
-.sb-bar { height: 4px; background: var(--bg-muted); border-radius: 2px; overflow: hidden; }
-.sb-fill { height: 100%; border-radius: 2px; transition: width 0.3s ease; }
-.sb-style   { background: #6366f1; }
-.sb-budget  { background: #22c55e; }
-.sb-over    { background: #ef4444; }
-.sb-season  { background: #f59e0b; }
-.sb-fatigue { background: #3b82f6; }
+.sb-lbl   { font-size: 9px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.04em; }
+.sb-stars { font-size: 10px; color: #f59e0b; letter-spacing: 0.5px; line-height: 1; }
+.sb-stars-over { color: #ef4444; }
+.star-half { display: inline-block; width: 0.5em; overflow: hidden; vertical-align: top; }
 
 /* ── Ideal days hint ─────────────────────────────────────── */
 .ideal-hint {

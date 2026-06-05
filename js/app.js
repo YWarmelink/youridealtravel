@@ -815,6 +815,18 @@ const TIER_CFG = {
 
 function flag(country) { return FLAGS[country] || '🌍'; }
 
+// val = waarde, inMax = max van de inputschaal (bijv. 100 of 10)
+function toStars(val, inMax = 100) {
+  const score   = Math.max(0, Math.min(5, (val / inMax) * 5));
+  const rounded = Math.round(score * 2) / 2;
+  const full    = Math.floor(rounded);
+  const half    = (rounded % 1) >= 0.5 ? 1 : 0;
+  const empty   = 5 - full - half;
+  return '★'.repeat(full)
+    + (half ? '<span class="star-half">★</span>' : '')
+    + '☆'.repeat(empty);
+}
+
 function topStyles(c) {
   return STYLES
     .map(s => ({ ...s, val: c.catScores[s.uKey] }))
@@ -864,7 +876,7 @@ function renderCard(c) {
     : `€${Math.abs(Math.round(roomLeft)).toLocaleString('nl-NL')} over budget`;
 
   const stylesHtml = topStyles(c)
-    .map(s => `<span class="style-tag">${s.icon} ${s.label} <span class="style-tag-score">${Math.round(s.val * 10) / 10}</span></span>`)
+    .map(s => `<span class="style-tag">${s.icon} ${s.label} <span class="style-tag-score">${toStars(s.val, 10)}</span></span>`)
     .join('');
 
   const seasonVal = c.rawSeason;
@@ -913,26 +925,10 @@ function renderCard(c) {
         <span class="indicator ${fatCls}">${fatLbl}</span>
       </div>
       <div class="score-breakdown">
-        <div class="sb-item">
-          <span class="sb-lbl">Style</span>
-          <div class="sb-bar"><div class="sb-fill sb-style" style="width:${Math.round(c.pctPref)}%"></div></div>
-          <span class="sb-num">${Math.round(c.pctPref)}</span>
-        </div>
-        <div class="sb-item">
-          <span class="sb-lbl">Budget</span>
-          <div class="sb-bar"><div class="sb-fill sb-budget ${c.costFit === 'OVER' ? 'sb-over' : ''}" style="width:${Math.round(c.rankBudgetScore || c.budgetScore)}%"></div></div>
-          <span class="sb-num">${Math.round(c.rankBudgetScore || c.budgetScore)}</span>
-        </div>
-        <div class="sb-item">
-          <span class="sb-lbl">Season</span>
-          <div class="sb-bar"><div class="sb-fill sb-season" style="width:${Math.round(c.pctSeasonScore || 0)}%"></div></div>
-          <span class="sb-num">${Math.round(c.pctSeasonScore || 0)}</span>
-        </div>
-        <div class="sb-item">
-          <span class="sb-lbl">Fatigue</span>
-          <div class="sb-bar"><div class="sb-fill sb-fatigue" style="width:${Math.round(c.pctFatigue || 0)}%"></div></div>
-          <span class="sb-num">${Math.round(c.pctFatigue || 0)}</span>
-        </div>
+        <div class="sb-item"><span class="sb-lbl">Style</span>  <span class="sb-stars">${toStars(c.pctPref)}</span></div>
+        <div class="sb-item"><span class="sb-lbl">Budget</span> <span class="sb-stars ${c.costFit === 'OVER' ? 'sb-stars-over' : ''}">${toStars(c.rankBudgetScore ?? c.budgetScore)}</span></div>
+        <div class="sb-item"><span class="sb-lbl">Season</span> <span class="sb-stars">${toStars(c.pctSeasonScore || 0)}</span></div>
+        <div class="sb-item"><span class="sb-lbl">Fatigue</span><span class="sb-stars">${toStars(c.pctFatigue || 0)}</span></div>
       </div>
     </div>
   `;
