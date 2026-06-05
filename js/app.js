@@ -459,13 +459,31 @@ function calcTrip(t) {
   const costFit   = cost <= U.budget ? 'OK' : 'OVER';
   const budgetRaw = (U.budget - cost) / U.budget * 100;
 
+  // Days-weighted style scores from COUNTRIES (authoritative source).
+  // Combo: each country's scores weighted by days spent there.
+  const totalDays = daysA + daysB;
+  const wA = totalDays > 0 ? daysA / totalDays : 1;
+  const wB = hasB && totalDays > 0 ? daysB / totalDays : 0;
+  const catScores = cdA ? {
+    adventure: wA * num(cdA.adventure) + wB * num(cdB?.adventure || 0),
+    food:      wA * num(cdA.food)      + wB * num(cdB?.food      || 0),
+    nature:    wA * num(cdA.nature)    + wB * num(cdB?.nature    || 0),
+    beach:     wA * num(cdA.beach)     + wB * num(cdB?.beach     || 0),
+    nightlife: wA * num(cdA.nightlife) + wB * num(cdB?.nightlife || 0),
+    culture:   wA * num(cdA.culture)   + wB * num(cdB?.culture   || 0),
+  } : {
+    adventure: num(t.adventure_score), food:      num(t.food_score),
+    nature:    num(t.nature_score),    beach:     num(t.beach_score),
+    nightlife: num(t.nightlife_score), culture:   num(t.culture_score),
+  };
+
   const prefRaw = (
-    U.adventure * num(t.adventure_score) +
-    U.food      * num(t.food_score)      +
-    U.nature    * num(t.nature_score)    +
-    U.beach     * num(t.beach_score)     +
-    U.nightlife * num(t.nightlife_score) +
-    U.culture   * num(t.culture_score)
+    U.adventure * catScores.adventure +
+    U.food      * catScores.food      +
+    U.nature    * catScores.nature    +
+    U.beach     * catScores.beach     +
+    U.nightlife * catScores.nightlife +
+    U.culture   * catScores.culture
   );
 
   return {
@@ -474,6 +492,7 @@ function calcTrip(t) {
     hasB,
     daysA, daysB,
     cost, costFit,
+    catScores,
     rawBudget:  budgetRaw,
     rawPref:    prefRaw,
     rawFatigue: 100 - num(t.fatigue_penalty),
@@ -516,15 +535,31 @@ function calcTripIdeal(t) {
   const cost = flight + daysA * dailyCostA * travelersDaily + (hasB ? daysB * dailyCostB * travelersDaily : 0);
   const costFit   = cost <= U.budget ? 'OK' : 'OVER';
   const budgetRaw = (U.budget - cost) / U.budget * 100;
-  const prefRaw   = (
-    U.adventure * num(t.adventure_score) + U.food * num(t.food_score) +
-    U.nature * num(t.nature_score) + U.beach * num(t.beach_score) +
-    U.nightlife * num(t.nightlife_score) + U.culture * num(t.culture_score)
+
+  const totalDaysI = daysA + daysB;
+  const wAi = totalDaysI > 0 ? daysA / totalDaysI : 1;
+  const wBi = hasB && totalDaysI > 0 ? daysB / totalDaysI : 0;
+  const catScores = cdA ? {
+    adventure: wAi * num(cdA.adventure) + wBi * num(cdB?.adventure || 0),
+    food:      wAi * num(cdA.food)      + wBi * num(cdB?.food      || 0),
+    nature:    wAi * num(cdA.nature)    + wBi * num(cdB?.nature    || 0),
+    beach:     wAi * num(cdA.beach)     + wBi * num(cdB?.beach     || 0),
+    nightlife: wAi * num(cdA.nightlife) + wBi * num(cdB?.nightlife || 0),
+    culture:   wAi * num(cdA.culture)   + wBi * num(cdB?.culture   || 0),
+  } : {
+    adventure: num(t.adventure_score), food:      num(t.food_score),
+    nature:    num(t.nature_score),    beach:     num(t.beach_score),
+    nightlife: num(t.nightlife_score), culture:   num(t.culture_score),
+  };
+  const prefRaw = (
+    U.adventure * catScores.adventure + U.food * catScores.food +
+    U.nature    * catScores.nature    + U.beach * catScores.beach +
+    U.nightlife * catScores.nightlife + U.culture * catScores.culture
   );
 
   return {
     _t: t, feasible: true, hasB, daysA, daysB, cost, costFit,
-    rawBudget: budgetRaw, rawPref: prefRaw,
+    catScores, rawBudget: budgetRaw, rawPref: prefRaw,
     rawFatigue: 100 - num(t.fatigue_penalty),
     rawSeason: Object.keys(countryData).length > 0
       ? (hasB
@@ -553,12 +588,12 @@ function rankCalced(calced) {
 
   // Per-category percentile ranks — each style dimension ranked independently
   // so that weight changes have real impact on who rises to the top
-  const pctAdventure = pctRanks(calced.map(c => num(c._t.adventure_score)));
-  const pctFood      = pctRanks(calced.map(c => num(c._t.food_score)));
-  const pctNature    = pctRanks(calced.map(c => num(c._t.nature_score)));
-  const pctBeach     = pctRanks(calced.map(c => num(c._t.beach_score)));
-  const pctNightlife = pctRanks(calced.map(c => num(c._t.nightlife_score)));
-  const pctCulture   = pctRanks(calced.map(c => num(c._t.culture_score)));
+  const pctAdventure = pctRanks(calced.map(c => c.catScores.adventure));
+  const pctFood      = pctRanks(calced.map(c => c.catScores.food));
+  const pctNature    = pctRanks(calced.map(c => c.catScores.nature));
+  const pctBeach     = pctRanks(calced.map(c => c.catScores.beach));
+  const pctNightlife = pctRanks(calced.map(c => c.catScores.nightlife));
+  const pctCulture   = pctRanks(calced.map(c => c.catScores.culture));
 
   const totalStyleWeight = U.adventure + U.food + U.nature + U.beach + U.nightlife + U.culture;
 
@@ -652,15 +687,15 @@ function applyFilter(ranked) {
     case 'budget':
       return all.sort((a, b) => a.cost - b.cost);
     case 'adventure':
-      return all.sort((a, b) => num(b._t.adventure_score) - num(a._t.adventure_score));
+      return all.sort((a, b) => b.catScores.adventure - a.catScores.adventure);
     case 'lowfatigue':
       return all.sort((a, b) => num(a._t.fatigue_penalty) - num(b._t.fatigue_penalty));
     case 'inseason':
       return all.sort((a, b) => b.rawSeason - a.rawSeason);
     case 'foodculture':
       return all.sort((a, b) =>
-        (num(b._t.food_score) + num(b._t.culture_score)) -
-        (num(a._t.food_score) + num(a._t.culture_score))
+        (b.catScores.food + b.catScores.culture) -
+        (a.catScores.food + a.catScores.culture)
       );
     default:
       return all;
@@ -733,7 +768,7 @@ function flag(country) { return FLAGS[country] || '🌍'; }
 
 function topStyles(c) {
   return STYLES
-    .map(s => ({ ...s, val: num(c._t[s.key]) }))
+    .map(s => ({ ...s, val: c.catScores[s.uKey] }))
     .sort((a, b) => b.val - a.val)
     .slice(0, 2);
 }
@@ -765,7 +800,7 @@ function renderCard(c) {
     : `€${Math.abs(Math.round(roomLeft)).toLocaleString('nl-NL')} over budget`;
 
   const stylesHtml = topStyles(c)
-    .map(s => `<span class="style-tag">${s.icon} ${s.label} <span class="style-tag-score">${s.val}</span></span>`)
+    .map(s => `<span class="style-tag">${s.icon} ${s.label} <span class="style-tag-score">${Math.round(s.val * 10) / 10}</span></span>`)
     .join('');
 
   const seasonVal = c.rawSeason;
@@ -888,7 +923,7 @@ function renderCompare() {
     const seasonLbl = seasonVal >= 50 ? '☀️ Peak' : seasonVal >= 20 ? '🌤 Good' : '🌧 Off';
     const fatVal    = num(t.fatigue_penalty);
     const fatLbl    = fatVal <= 10 ? '😌 Easy' : fatVal <= 14 ? '🎒 Moderate' : '💪 Demanding';
-    const topS = STYLES.map(s => ({ ...s, val: num(t[s.key]) })).sort((a, b) => b.val - a.val).slice(0, 3);
+    const topS = STYLES.map(s => ({ ...s, val: c.catScores[s.uKey] })).sort((a, b) => b.val - a.val).slice(0, 3);
 
     return `
       <div class="compare-col">
