@@ -134,6 +134,7 @@ let U = {
   seasonPref: 'Mid',
   maxCountries: 2,
   comboOnly: false,
+  tripleOnly: false,
   avoidLong: false,
   travelers: 1,
   sharedAccom: true,
@@ -298,16 +299,33 @@ function buildTripsFromData() {
   const countries = Object.keys(countryData);
   const trips = [];
 
+  // Single trips
   countries.forEach(a => {
-    trips.push({ trip_key: a, country_a: a, country_b: '' });
+    trips.push({ trip_key: a, country_a: a, country_b: '', country_c: '' });
   });
 
+  // 2-country combos: NL-A, A-B, B-NL all exist
   countries.forEach(a => {
     countries.forEach(b => {
-      if (a === b) return;
+      if (b === a) return;
       if (flightData[`NL-${a}`] && flightData[`${a}-${b}`] && flightData[`${b}-NL`]) {
-        trips.push({ trip_key: `${a}+${b}`, country_a: a, country_b: b });
+        trips.push({ trip_key: `${a}+${b}`, country_a: a, country_b: b, country_c: '' });
       }
+    });
+  });
+
+  // 3-country combos: NL-A, A-B, B-C, C-NL all exist, and all same region
+  countries.forEach(a => {
+    countries.forEach(b => {
+      if (b === a) return;
+      countries.forEach(c => {
+        if (c === a || c === b) return;
+        const cdA = countryData[a], cdB = countryData[b], cdC = countryData[c];
+        if (cdA.region !== cdB.region || cdA.region !== cdC.region) return;
+        if (flightData[`NL-${a}`] && flightData[`${a}-${b}`] && flightData[`${b}-${c}`] && flightData[`${c}-NL`]) {
+          trips.push({ trip_key: `${a}+${b}+${c}`, country_a: a, country_b: b, country_c: c });
+        }
+      });
     });
   });
 
@@ -405,64 +423,85 @@ function flightLegCost(from, to) {
 }
 
 function calcTrip(t) {
-  const hasB = !!(t.country_b && t.country_b !== '');
+  const hasB = !!(t.country_b);
+  const hasC = !!(t.country_c);
   const cdA = countryData[t.country_a];
   const cdB = hasB ? countryData[t.country_b] : null;
-  if (!cdA || (hasB && !cdB)) return { _t: t, feasible: false, reason: 'No country data' };
+  const cdC = hasC ? countryData[t.country_c] : null;
+  if (!cdA || (hasB && !cdB) || (hasC && !cdC)) return { _t: t, feasible: false, reason: 'No country data' };
 
   const styleCol = STYLE_COL[U.travelStyle] || 'daily_cost_mid';
   const luxMult  = U.travelStyle === 'Luxury' ? LUXURY_MULT : 1;
   const dailyCostA = num(cdA[styleCol]) * luxMult;
   const dailyCostB = hasB ? num(cdB[styleCol]) * luxMult : 0;
-
+  const dailyCostC = hasC ? num(cdC[styleCol]) * luxMult : 0;
   const travelersDaily = U.sharedAccom ? 0.55 + 0.45 * U.travelers : U.travelers;
 
-  const legNLtoA = flightLegCost('NL', t.country_a);
-  const legAtoB  = hasB ? flightLegCost(t.country_a, t.country_b) : 0;
-  const legBtoNL = flightLegCost(hasB ? t.country_b : t.country_a, 'NL');
-  const flight   = (legNLtoA + legAtoB + legBtoNL) * U.travelers;
+  const lastCountry = hasC ? t.country_c : hasB ? t.country_b : t.country_a;
+  const flight = (
+    flightLegCost('NL', t.country_a) +
+    (hasB ? flightLegCost(t.country_a, t.country_b) : 0) +
+    (hasC ? flightLegCost(t.country_b, t.country_c) : 0) +
+    flightLegCost(lastCountry, 'NL')
+  ) * U.travelers;
 
   const minA = num(cdA.min_days), idealA = num(cdA.ideal_days), maxA = num(cdA.max_days);
-  let daysA, daysB;
+  let daysA, daysB = 0, daysC = 0;
 
-  if (hasB) {
+  if (hasC) {
     const minB = num(cdB.min_days), idealB = num(cdB.ideal_days);
-    const minTotal = minA + minB;
+    const minC = num(cdC.min_days), idealC = num(cdC.ideal_days);
+    const minTotal = minA + minB + minC;
     if (U.days < minTotal) return { _t: t, feasible: false, reason: `Needs ≥${minTotal} days` };
+    const totalIdeal = idealA + idealB + idealC;
+    daysA = Math.max(minA, Math.round(U.days * (totalIdeal > 0 ? idealA / totalIdeal : 1/3)));
+    daysB = Math.max(minB, Math.round(U.days * (totalIdeal > 0 ? idealB / totalIdeal : 1/3)));
+    daysC = Math.max(minC, U.days - daysA - daysB);
+    if (daysC < minC) {
+      daysC = minC;
+      const rem = U.days - daysC;
+      const tot2 = idealA + idealB;
+      daysA = Math.max(minA, Math.round(rem * (tot2 > 0 ? idealA / tot2 : 0.5)));
+      daysB = Math.max(minB, rem - daysA);
+    }
+  } else if (hasB) {
+    const minB = num(cdB.min_days), idealB = num(cdB.ideal_days);
+    if (U.days < minA + minB) return { _t: t, feasible: false, reason: `Needs ≥${minA + minB} days` };
     const totalIdeal = idealA + idealB;
-    const ratioA     = totalIdeal > 0 ? idealA / totalIdeal : 0.5;
-    daysA = Math.max(minA, Math.round(U.days * ratioA));
+    daysA = Math.max(minA, Math.round(U.days * (totalIdeal > 0 ? idealA / totalIdeal : 0.5)));
     daysB = U.days - daysA;
     if (daysB < minB) { daysB = minB; daysA = Math.max(minA, U.days - daysB); }
   } else {
     if (U.days < minA) return { _t: t, feasible: false, reason: `Needs ≥${minA} days` };
     daysA = U.days;
-    daysB = 0;
   }
 
   const maxB = hasB ? num(cdB.max_days) : 0;
-  const overstayA = maxA > 0 ? Math.max(0, daysA - maxA) / maxA : 0;
-  const overstayB = hasB && maxB > 0 ? Math.max(0, daysB - maxB) / maxB : 0;
-  const rawOverstay = Math.max(overstayA, overstayB);
+  const maxC = hasC ? num(cdC.max_days) : 0;
+  const rawOverstay = Math.max(
+    maxA > 0 ? Math.max(0, daysA - maxA) / maxA : 0,
+    hasB && maxB > 0 ? Math.max(0, daysB - maxB) / maxB : 0,
+    hasC && maxC > 0 ? Math.max(0, daysC - maxC) / maxC : 0
+  );
 
-  const cost    = flight + daysA * dailyCostA * travelersDaily + (hasB ? daysB * dailyCostB * travelersDaily : 0);
+  const cost = flight
+    + daysA * dailyCostA * travelersDaily
+    + (hasB ? daysB * dailyCostB * travelersDaily : 0)
+    + (hasC ? daysC * dailyCostC * travelersDaily : 0);
   const costFit = cost <= U.budget ? 'OK' : 'OVER';
 
-  // Day-weighted scores and fatigue from COUNTRIES
-  const totalDays = daysA + daysB;
-  const wA = totalDays > 0 ? daysA / totalDays : 1;
-  const wB = hasB && totalDays > 0 ? daysB / totalDays : 0;
+  const totalDays = daysA + daysB + daysC;
+  const wA = daysA / totalDays, wB = daysB / totalDays, wC = daysC / totalDays;
+
+  const score = (key) =>
+    wA * num(cdA[key]) + wB * num(cdB?.[key] || 0) + wC * num(cdC?.[key] || 0);
 
   const catScores = {
-    adventure: wA * num(cdA.adventure) + wB * num(cdB?.adventure || 0),
-    food:      wA * num(cdA.food)      + wB * num(cdB?.food      || 0),
-    nature:    wA * num(cdA.nature)    + wB * num(cdB?.nature    || 0),
-    beach:     wA * num(cdA.beach)     + wB * num(cdB?.beach     || 0),
-    nightlife: wA * num(cdA.nightlife) + wB * num(cdB?.nightlife || 0),
-    culture:   wA * num(cdA.culture)   + wB * num(cdB?.culture   || 0),
+    adventure: score('adventure'), food:      score('food'),
+    nature:    score('nature'),    beach:     score('beach'),
+    nightlife: score('nightlife'), culture:   score('culture'),
   };
-
-  const fatigueRaw = wA * num(cdA.fatigue) + wB * num(cdB?.fatigue || 0);
+  const fatigueRaw = score('fatigue');
 
   const prefRaw = (
     U.adventure * catScores.adventure + U.food      * catScores.food  +
@@ -470,70 +509,73 @@ function calcTrip(t) {
     U.nightlife * catScores.nightlife + U.culture   * catScores.culture
   );
 
+  const seasons = [t.country_a, hasB && t.country_b, hasC && t.country_c].filter(Boolean);
+  const rawSeason = seasons.reduce((s, c) => s + countrySeasonScore(c, U.startMonth, U.endMonth, U.seasonPref), 0) / seasons.length;
+
   return {
-    _t: t, feasible: true, hasB, daysA, daysB, cost, costFit, catScores, fatigueRaw,
-    rawBudget:  (U.budget - cost) / U.budget * 100,
-    rawPref:    prefRaw,
-    rawFatigue: 100 - fatigueRaw * 10,
-    rawSeason:  hasB
-      ? (countrySeasonScore(t.country_a, U.startMonth, U.endMonth, U.seasonPref) +
-         countrySeasonScore(t.country_b, U.startMonth, U.endMonth, U.seasonPref)) / 2
-      : countrySeasonScore(t.country_a, U.startMonth, U.endMonth, U.seasonPref),
-    rawOverstay,
+    _t: t, feasible: true, hasB, hasC, daysA, daysB, daysC, cost, costFit, catScores, fatigueRaw,
+    rawBudget: (U.budget - cost) / U.budget * 100,
+    rawPref: prefRaw, rawFatigue: 100 - fatigueRaw * 10, rawSeason, rawOverstay,
   };
 }
 
 // Calculates a trip using ideal_days per country instead of U.days
 function calcTripIdeal(t) {
-  const hasB = !!(t.country_b && t.country_b !== '');
+  const hasB = !!(t.country_b);
+  const hasC = !!(t.country_c);
   const cdA = countryData[t.country_a];
   const cdB = hasB ? countryData[t.country_b] : null;
-  if (!cdA || (hasB && !cdB)) return { _t: t, feasible: false, reason: 'No country data' };
+  const cdC = hasC ? countryData[t.country_c] : null;
+  if (!cdA || (hasB && !cdB) || (hasC && !cdC)) return { _t: t, feasible: false, reason: 'No country data' };
 
   const styleCol = STYLE_COL[U.travelStyle] || 'daily_cost_mid';
   const luxMult  = U.travelStyle === 'Luxury' ? LUXURY_MULT : 1;
   const dailyCostA = num(cdA[styleCol]) * luxMult;
   const dailyCostB = hasB ? num(cdB[styleCol]) * luxMult : 0;
+  const dailyCostC = hasC ? num(cdC[styleCol]) * luxMult : 0;
   const travelersDaily = U.sharedAccom ? 0.55 + 0.45 * U.travelers : U.travelers;
 
-  const flight = (flightLegCost('NL', t.country_a)
-    + (hasB ? flightLegCost(t.country_a, t.country_b) : 0)
-    + flightLegCost(hasB ? t.country_b : t.country_a, 'NL')) * U.travelers;
+  const lastCountry = hasC ? t.country_c : hasB ? t.country_b : t.country_a;
+  const flight = (
+    flightLegCost('NL', t.country_a) +
+    (hasB ? flightLegCost(t.country_a, t.country_b) : 0) +
+    (hasC ? flightLegCost(t.country_b, t.country_c) : 0) +
+    flightLegCost(lastCountry, 'NL')
+  ) * U.travelers;
 
   const daysA = Math.max(num(cdA.min_days), num(cdA.ideal_days));
   const daysB = hasB ? Math.max(num(cdB.min_days), num(cdB.ideal_days)) : 0;
+  const daysC = hasC ? Math.max(num(cdC.min_days), num(cdC.ideal_days)) : 0;
 
-  const cost    = flight + daysA * dailyCostA * travelersDaily + (hasB ? daysB * dailyCostB * travelersDaily : 0);
+  const cost = flight
+    + daysA * dailyCostA * travelersDaily
+    + (hasB ? daysB * dailyCostB * travelersDaily : 0)
+    + (hasC ? daysC * dailyCostC * travelersDaily : 0);
   const costFit = cost <= U.budget ? 'OK' : 'OVER';
 
-  const totalDays = daysA + daysB;
-  const wA = totalDays > 0 ? daysA / totalDays : 1;
-  const wB = hasB && totalDays > 0 ? daysB / totalDays : 0;
+  const totalDays = daysA + daysB + daysC;
+  const wA = daysA / totalDays, wB = daysB / totalDays, wC = daysC / totalDays;
+  const score = (key) =>
+    wA * num(cdA[key]) + wB * num(cdB?.[key] || 0) + wC * num(cdC?.[key] || 0);
 
   const catScores = {
-    adventure: wA * num(cdA.adventure) + wB * num(cdB?.adventure || 0),
-    food:      wA * num(cdA.food)      + wB * num(cdB?.food      || 0),
-    nature:    wA * num(cdA.nature)    + wB * num(cdB?.nature    || 0),
-    beach:     wA * num(cdA.beach)     + wB * num(cdB?.beach     || 0),
-    nightlife: wA * num(cdA.nightlife) + wB * num(cdB?.nightlife || 0),
-    culture:   wA * num(cdA.culture)   + wB * num(cdB?.culture   || 0),
+    adventure: score('adventure'), food:      score('food'),
+    nature:    score('nature'),    beach:     score('beach'),
+    nightlife: score('nightlife'), culture:   score('culture'),
   };
-
-  const fatigueRaw = wA * num(cdA.fatigue) + wB * num(cdB?.fatigue || 0);
+  const fatigueRaw = score('fatigue');
   const prefRaw = (
     U.adventure * catScores.adventure + U.food      * catScores.food  +
     U.nature    * catScores.nature    + U.beach     * catScores.beach  +
     U.nightlife * catScores.nightlife + U.culture   * catScores.culture
   );
+  const seasons = [t.country_a, hasB && t.country_b, hasC && t.country_c].filter(Boolean);
+  const rawSeason = seasons.reduce((s, c) => s + countrySeasonScore(c, U.startMonth, U.endMonth, U.seasonPref), 0) / seasons.length;
 
   return {
-    _t: t, feasible: true, hasB, daysA, daysB, cost, costFit, catScores, fatigueRaw,
+    _t: t, feasible: true, hasB, hasC, daysA, daysB, daysC, cost, costFit, catScores, fatigueRaw,
     rawBudget: (U.budget - cost) / U.budget * 100, rawPref: prefRaw,
-    rawFatigue: 100 - fatigueRaw * 10,
-    rawSeason: hasB
-      ? (countrySeasonScore(t.country_a, U.startMonth, U.endMonth, U.seasonPref) +
-         countrySeasonScore(t.country_b, U.startMonth, U.endMonth, U.seasonPref)) / 2
-      : countrySeasonScore(t.country_a, U.startMonth, U.endMonth, U.seasonPref),
+    rawFatigue: 100 - fatigueRaw * 10, rawSeason,
   };
 }
 
@@ -582,7 +624,7 @@ function rankCalced(calced) {
                  U.fatigueWeight * pctFat[i]  +
                  seasonW        * pctSeason[i];
     const overstayFactor = 1 / (1 + (c.rawOverstay || 0));
-    const comboFactor    = c.hasB ? 1.08 : 1.0;
+    const comboFactor    = c.hasC ? 1.15 : c.hasB ? 1.08 : 1.0;
     const finalScore     = base * overstayFactor * comboFactor;
     return { ...c, pctPref: prefScore, budgetScore, finalScore };
   });
@@ -612,10 +654,13 @@ function calcAndRank() {
   if (rawTrips.length === 0) return [];
 
   const allowed = rawTrips.filter(t => {
-    const hasB = !!(t.country_b && t.country_b !== '');
+    const hasB = !!(t.country_b);
+    const hasC = !!(t.country_c);
     if (U.avoidLong          && (flightData[`NL-${t.country_a}`]?.region || '') === 'Intercontinental') return false;
     if (U.maxCountries === 1 && hasB)  return false;
     if (U.comboOnly          && !hasB) return false;
+    if (U.tripleOnly         && !hasC) return false;
+    if (U.maxCountries === 2 && hasC)  return false;
     return true;
   });
 
@@ -631,14 +676,16 @@ function applyFilter(ranked) {
   if (currentFilter === 'idealtrip') {
     if (rawTrips.length === 0) return [];
     const allowed = rawTrips.filter(t => {
-      const fe  = filterMap[t.trip_key] || {};
-      const hasB = !!(t.country_b && t.country_b !== '');
-      if (U.avoidLong          && fe.is_intercontinental === 'TRUE') return false;
+      const hasB = !!(t.country_b);
+      const hasC = !!(t.country_c);
+      if (U.avoidLong          && (flightData[`NL-${t.country_a}`]?.region || '') === 'Intercontinental') return false;
       if (U.maxCountries === 1 && hasB)  return false;
       if (U.comboOnly          && !hasB) return false;
+      if (U.tripleOnly         && !hasC) return false;
+      if (U.maxCountries === 2 && hasC)  return false;
       return true;
     });
-    return rankCalced(allowed.map(t => calcTripIdeal(t)));
+    return rankCalced(allowed.map(t => calcTripIdeal(t)).filter(c => c.feasible));
   }
 
   const all = [...ranked];
@@ -654,7 +701,7 @@ function applyFilter(ranked) {
     case 'adventure':
       return all.sort((a, b) => b.catScores.adventure - a.catScores.adventure);
     case 'lowfatigue':
-      return all.sort((a, b) => num(a._t.fatigue_penalty) - num(b._t.fatigue_penalty));
+      return all.sort((a, b) => a.fatigueRaw - b.fatigueRaw);
     case 'inseason':
       return all.sort((a, b) => b.rawSeason - a.rawSeason);
     case 'foodculture':
@@ -694,7 +741,7 @@ function updateMap(ranked) {
   // Keep best-tier entry per country
   const countryBest = {};
   ranked.forEach(c => {
-    [c._t.country_a, c._t.country_b].filter(Boolean).forEach(co => {
+    [c._t.country_a, c._t.country_b, c._t.country_c].filter(Boolean).forEach(co => {
       if (!countryBest[co] || TIER_ORDER[c.tier] < TIER_ORDER[countryBest[co].tier]) {
         countryBest[co] = c;
       }
@@ -742,13 +789,15 @@ function renderCard(c) {
   const t    = c._t;
   const tier = TIER_CFG[c.tier] || TIER_CFG['MID'];
 
-  const countries = [t.country_a, t.country_b].filter(Boolean);
+  const countries = [t.country_a, t.country_b, t.country_c].filter(Boolean);
   const countriesHtml = countries
     .map((co, i) => `${i > 0 ? '<span class="country-sep">+</span>' : ''}<span class="country-name">${flag(co)} ${co}</span>`)
     .join('');
 
   let daysHtml = '';
-  if (c.hasB) {
+  if (c.hasC) {
+    daysHtml = `<div class="card-days"><span class="days-highlight">${c.daysA}d</span> ${t.country_a} + <span class="days-highlight">${c.daysB}d</span> ${t.country_b} + <span class="days-highlight">${c.daysC}d</span> ${t.country_c}</div>`;
+  } else if (c.hasB) {
     daysHtml = `<div class="card-days"><span class="days-highlight">${c.daysA}d</span> ${t.country_a} + <span class="days-highlight">${c.daysB}d</span> ${t.country_b}</div>`;
   } else {
     daysHtml = `<div class="card-days"><span class="days-highlight">${c.daysA} days</span> in ${t.country_a}</div>`;
@@ -784,7 +833,7 @@ function renderCard(c) {
         <span class="rank-num">#${c.rank}</span>
         <span class="tier-pill ${tier.pill}">${tier.label}</span>
         <div class="card-header-right">
-          ${c.hasB ? '<span class="combo-pill">✈ Combo</span>' : ''}
+          ${c.hasC ? '<span class="combo-pill">✈ Triple</span>' : c.hasB ? '<span class="combo-pill">✈ Combo</span>' : ''}
           <button class="pin-btn${isPinned ? ' pinned' : ''}" data-key="${t.trip_key}" title="${isPinned ? 'Unpin' : 'Compare'}">${isPinned ? '✓' : '+'}</button>
         </div>
       </div>
@@ -882,8 +931,8 @@ function renderCompare() {
 
   cols.innerHTML = trips.map(c => {
     const t        = c._t;
-    const name     = [t.country_a, t.country_b].filter(Boolean).map(co => `${flag(co)} ${co}`).join(' + ');
-    const daysText = c.hasB ? `${c.daysA}d + ${c.daysB}d` : `${c.daysA} days`;
+    const name     = [t.country_a, t.country_b, t.country_c].filter(Boolean).map(co => `${flag(co)} ${co}`).join(' + ');
+    const daysText = c.hasC ? `${c.daysA}d + ${c.daysB}d + ${c.daysC}d` : c.hasB ? `${c.daysA}d + ${c.daysB}d` : `${c.daysA} days`;
     const seasonVal = c.rawSeason;
     const seasonLbl = seasonVal >= 50 ? '☀️ Peak' : seasonVal >= 20 ? '🌤 Good' : '🌧 Off';
     const fatVal    = c.fatigueRaw;
@@ -975,8 +1024,10 @@ function refreshUI() {
   document.getElementById('accom-shared').classList.toggle('active', U.sharedAccom);
   document.getElementById('accom-separate').classList.toggle('active', !U.sharedAccom);
   document.getElementById('max-1').classList.toggle('active', U.maxCountries === 1);
-  document.getElementById('max-2').classList.toggle('active', U.maxCountries === 2 && !U.comboOnly);
+  document.getElementById('max-2').classList.toggle('active', U.maxCountries === 2 && !U.comboOnly && !U.tripleOnly);
   document.getElementById('max-combo').classList.toggle('active', U.comboOnly);
+  document.getElementById('max-3').classList.toggle('active', U.maxCountries === 3 && !U.tripleOnly);
+  document.getElementById('max-triple').classList.toggle('active', U.tripleOnly);
 
   STYLES.forEach(s => {
     const slider = document.getElementById(`sl-${s.uKey}`);
@@ -1136,17 +1187,22 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   // Max countries
-  const setMaxBtn = (maxC, combo) => {
+  const setMaxBtn = (maxC, combo, triple) => {
     pendingU.maxCountries = maxC;
     pendingU.comboOnly    = combo;
+    pendingU.tripleOnly   = triple;
     document.getElementById('max-1').classList.toggle('active', maxC === 1);
-    document.getElementById('max-2').classList.toggle('active', maxC === 2 && !combo);
+    document.getElementById('max-2').classList.toggle('active', maxC === 2 && !combo && !triple);
     document.getElementById('max-combo').classList.toggle('active', combo);
+    document.getElementById('max-3').classList.toggle('active', maxC === 3 && !triple);
+    document.getElementById('max-triple').classList.toggle('active', triple);
     markPending();
   };
-  document.getElementById('max-1').addEventListener('click',     () => setMaxBtn(1, false));
-  document.getElementById('max-2').addEventListener('click',     () => setMaxBtn(2, false));
-  document.getElementById('max-combo').addEventListener('click', () => setMaxBtn(2, true));
+  document.getElementById('max-1').addEventListener('click',      () => setMaxBtn(1, false, false));
+  document.getElementById('max-2').addEventListener('click',      () => setMaxBtn(2, false, false));
+  document.getElementById('max-combo').addEventListener('click',  () => setMaxBtn(2, true,  false));
+  document.getElementById('max-3').addEventListener('click',      () => setMaxBtn(3, false, false));
+  document.getElementById('max-triple').addEventListener('click', () => setMaxBtn(3, false, true));
 
   // Toggles
   document.getElementById('avoid-long').addEventListener('change', e => { pendingU.avoidLong = e.target.checked; markPending(); });
