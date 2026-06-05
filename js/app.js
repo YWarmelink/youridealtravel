@@ -135,7 +135,7 @@ let U = {
   maxCountries: 2,
   comboOnly: false,
   tripleOnly: false,
-  avoidLong: false,
+  flightRange: 'all',
   travelers: 1,
   sharedAccom: true,
   adventure: 7, food: 10, nature: 8, beach: 6, nightlife: 3, culture: 9,
@@ -656,7 +656,9 @@ function calcAndRank() {
   const allowed = rawTrips.filter(t => {
     const hasB = !!(t.country_b);
     const hasC = !!(t.country_c);
-    if (U.avoidLong          && (flightData[`NL-${t.country_a}`]?.region || '') === 'Intercontinental') return false;
+    const _isLong = (flightData[`NL-${t.country_a}`]?.region || '') === 'Intercontinental';
+    if (U.flightRange === 'europe' && _isLong)  return false;
+    if (U.flightRange === 'world'  && !_isLong) return false;
     if (U.maxCountries === 1 && hasB)  return false;
     if (U.comboOnly          && !hasB) return false;
     if (U.tripleOnly         && !hasC) return false;
@@ -678,7 +680,9 @@ function applyFilter(ranked) {
     const allowed = rawTrips.filter(t => {
       const hasB = !!(t.country_b);
       const hasC = !!(t.country_c);
-      if (U.avoidLong          && (flightData[`NL-${t.country_a}`]?.region || '') === 'Intercontinental') return false;
+      const _isLong = (flightData[`NL-${t.country_a}`]?.region || '') === 'Intercontinental';
+    if (U.flightRange === 'europe' && _isLong)  return false;
+    if (U.flightRange === 'world'  && !_isLong) return false;
       if (U.maxCountries === 1 && hasB)  return false;
       if (U.comboOnly          && !hasB) return false;
       if (U.tripleOnly         && !hasC) return false;
@@ -1020,7 +1024,9 @@ function refreshUI() {
   const spEl = document.getElementById('season-pref');
   if (spEl) spEl.value = U.seasonPref;
 
-  document.getElementById('avoid-long').checked = U.avoidLong;
+  document.getElementById('range-all').classList.toggle('active',    U.flightRange === 'all');
+  document.getElementById('range-europe').classList.toggle('active', U.flightRange === 'europe');
+  document.getElementById('range-world').classList.toggle('active',  U.flightRange === 'world');
   document.getElementById('accom-shared').classList.toggle('active', U.sharedAccom);
   document.getElementById('accom-separate').classList.toggle('active', !U.sharedAccom);
   document.getElementById('max-1').classList.toggle('active', U.maxCountries === 1);
@@ -1205,7 +1211,16 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('max-triple').addEventListener('click', () => setMaxBtn(3, false, true));
 
   // Toggles
-  document.getElementById('avoid-long').addEventListener('change', e => { pendingU.avoidLong = e.target.checked; markPending(); });
+  const setFlightRange = val => {
+    pendingU.flightRange = val;
+    document.getElementById('range-all').classList.toggle('active',    val === 'all');
+    document.getElementById('range-europe').classList.toggle('active', val === 'europe');
+    document.getElementById('range-world').classList.toggle('active',  val === 'world');
+    markPending();
+  };
+  document.getElementById('range-all').addEventListener('click',    () => setFlightRange('all'));
+  document.getElementById('range-europe').addEventListener('click', () => setFlightRange('europe'));
+  document.getElementById('range-world').addEventListener('click',  () => setFlightRange('world'));
 
   // Filter tabs
   document.querySelectorAll('.tab').forEach(btn => {
