@@ -1,0 +1,22 @@
+country,region,country_cost_index,low_season,mid_season,high_season,daily_cost_backpack,daily_cost_mid,daily_cost_premium,min_days,ideal_days,max_days,wishlist,priority,fatigue,culture,nature,beach,food,nightlife,adventure,flight_key,sub_region
+France,Europe,"1,15","Nov,Dec,Jan,Feb","Mar,Apr,May,Sep,Oct","Jun,Jul,Aug",80,140,250,4,6,10,7,3,2,9,6,6,10,7,4,NL-France,Western Europe
+Portugal,Europe,"0,85","Nov,Dec,Jan,Feb","Mar,Apr,May,Sep,Oct","Jun,Jul,Aug",60,100,180,4,7,12,8,2,2,8,7,9,8,6,5,NL-Portugal,Iberian Peninsula
+Greece,Europe,"0,90","Nov,Dec,Jan,Feb,Mar","Apr,May,Sep,Oct","Jun,Jul,Aug",65,110,200,5,8,14,8,2,2,9,7,10,8,6,5,NL-Greece,Greece & Aegean
+Croatia,Europe,"0,90","Nov,Dec,Jan,Feb,Mar","Apr,May,Sep,Oct","Jun,Jul,Aug",60,105,190,4,7,12,7,3,2,7,8,9,7,5,6,NL-Croatia,Adriatic Balkans
+Iceland,Europe,"1,60","Nov,Dec,Jan,Feb","Mar,Apr,May,Sep,Oct","Jun,Jul,Aug",110,180,300,5,8,14,9,2,4,5,10,3,6,4,10,NL-Iceland,Nordic Islands
+Turkey,Europe,"0,70","Nov,Dec,Jan,Feb","Mar,Apr,May,Sep,Oct","Jun,Jul,Aug",50,90,170,5,10,18,7,3,3,9,7,7,9,5,6,NL-Turkey,East Mediterranean
+Morocco,Africa,"0,50","Jul,Aug","Nov,Dec,Jan,Feb,Mar","Apr,May,Sep,Oct",35,65,120,5,9,16,8,3,5,9,7,6,8,3,7,NL-Morocco,North Africa
+Egypt,Africa,"0,45","Jun,Jul,Aug","Sep,Oct,Mar,Apr","Nov,Dec,Jan,Feb,May",30,60,110,5,9,16,7,4,5,10,5,6,7,3,6,NL-Egypt,North Africa
+Georgia,Asia,"0,60","Nov,Dec,Jan,Feb","Mar,Apr,May,Sep,Oct","Jun,Jul,Aug",40,75,140,5,8,14,7,4,4,8,8,2,8,4,7,NL-Georgia,Caucasus
+Armenia,Asia,"0,60","Nov,Dec,Jan,Feb","Mar,Apr,May,Sep,Oct","Jun,Jul,Aug",40,75,140,5,7,12,6,5,4,8,7,1,7,4,6,NL-Armenia,Caucasus
+Azerbaijan,Asia,"0,65","Nov,Dec,Jan,Feb","Mar,Apr,May,Sep,Oct","Jun,Jul,Aug",45,80,150,4,6,10,5,6,4,8,6,3,7,4,5,NL-Azerbaijan,Caucasus
+India,Asia,"0,50","Apr,May,Jun","Jul,Aug,Sep,Oct","Nov,Dec,Jan,Feb,Mar",30,60,110,12,18,28,8,3,8,10,7,6,10,4,7,NL-India,South Asia
+Thailand,Asia,"0,70","Apr,May,Jun","Jul,Aug,Sep,Oct","Nov,Dec,Jan,Feb,Mar",40,75,140,10,14,21,9,2,4,8,7,9,9,7,6,NL-Thailand,SE Asia Mainland
+Vietnam,Asia,"0,55","Sep,Oct","Apr,May,Nov,Dec","Jan,Feb,Mar,Jun,Jul,Aug",35,65,120,10,14,21,9,2,5,9,8,7,9,5,6,NL-Vietnam,SE Asia Mainland
+Laos,Asia,"0,45","Jul,Aug,Sep","Apr,May,Jun,Oct,Nov","Dec,Jan,Feb,Mar",30,55,100,7,10,16,6,4,6,8,9,3,7,2,7,NL-Laos,SE Asia Mainland
+Uzbekistan,Asia,"0,55","Jun,Jul,Aug,Dec,Jan","Feb,Mar,Oct,Nov","Apr,May,Sep",35,65,120,7,10,16,7,4,5,10,5,1,7,2,5,NL-Uzbekistan,Central Asia
+Kyrgyzstan,Asia,"0,45","Nov,Dec,Jan,Feb,Mar","Apr,May,Sep,Oct","Jun,Jul,Aug",30,55,100,7,12,18,6,5,7,7,10,1,5,1,10,NL-Kyrgyzstan,Central Asia
+China,Asia,"0,85","Jan,Feb,Dec","Mar,Apr,May,Sep,Oct,Nov","Jun,Jul,Aug",50,90,170,10,16,25,7,4,6,10,8,4,9,5,6,NL-China,East Asia
+Canada,North America,"1,30","Nov,Dec,Jan,Feb,Mar","Apr,May,Sep,Oct","Jun,Jul,Aug",90,150,270,10,16,25,7,4,2,6,10,3,6,5,8,NL-Canada,North America
+Mexico,North America,"0,70","Sep,Oct","Nov,Dec,Apr,May","Jan,Feb,Mar,Jun,Jul,Aug",45,80,150,10,14,21,8,3,4,9,7,8,9,7,6,NL-Mexico,Central America
+Argentina,South America,"0,75","Jun,Jul,Aug","Sep,Oct,Apr,May","Nov,Dec,Jan,Feb,Mar",45,85,160,12,18,28,8,3,5,8,9,5,8,7,8,NL-Argentina,Southern Cone

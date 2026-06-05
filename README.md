@@ -21,8 +21,10 @@ Sheet ID: `2PACX-1vSOSC5BGR5CbQ4B9xwfqMAoltIjE1b11akL5WrNeRXOiSzdueUgtvI7xYIQTUJ
 | SETTINGS | 0 | Alleen nog aanwezig in sheet — **app laadt dit niet meer in** |
 | TRIP_ENGINE | 2103068682 | Trips: min/ideal/max days, fatigue, stijlscores |
 | FILTER_ENGINE | 431668285 | Filterdata per trip (intercontinentaal, etc.) |
-| COUNTRIES | 2119597216 | Per land: dagkosten per stijl, seizoensdefinities, scores |
-| FLIGHTS | 99695727 | Vliegkosten per route per seizoen (low/mid/high) |
+| COUNTRIES | 2119597216 | Per land: dagkosten per stijl, seizoensdefinities, scores, sub_region |
+| FLIGHTS | 99695727 | Vliegkosten per route per seizoen (low/mid/high), region_cluster |
+
+De app bevat momenteel **33 landen**. Nieuwe landen toevoegen: vul een rij in COUNTRIES in + de bijbehorende NL↔land routes in FLIGHTS. Inter-country routes zijn optioneel — die activeren combo-trips met dat land. Kant-en-klare import-CSV's staan in `sheets-import/`.
 
 De sheet bevat ook een development log (GID 1912455839) en FILTER_RESULTS (GID 28259201) die de app niet gebruikt.
 
@@ -64,7 +66,13 @@ Per leg opgezocht in `flightData` (uit FLIGHTS tab) via `flightLegCost(from, to)
 - Kiest `low_season_cost`, `mid_season_cost` of `high_season_cost`
 - Voor X→NL wordt het vertrekland gebruikt voor seizoensbepaling
 
-Totaal: `NL→A + A→B (als combo) + B→NL` × aantal reizigers
+Totaal: `NL→A + A→B (als combo) + B→C (als triple) + laatste→NL` × aantal reizigers
+
+### Combo-logica
+Combos worden gegenereerd op basis van beschikbare vliegroutes in FLIGHTS — niet beperkt per regio. Enige constraint voor **3-lands combos**: de route A→B→C moet geografisch aaneengesloten zijn. Dit wordt gecontroleerd via `SUBREGION_ADJACENT` (constante in app.js): sub-regio van A moet grenzen aan sub-regio van B, en B aan C.
+
+- `region_cluster` in FLIGHTS (`Europe` / `Intercontinental`) bepaalt de "Europe only" / "Outside Europe" filterknop — alleen gebaseerd op de eerste bestemming (`NL→A`).
+- `sub_region` in COUNTRIES bepaalt de adjacency-check voor 3-country combos. Als een land geen sub_region heeft, wordt de check overgeslagen.
 
 ### Seizoensscore
 Dynamisch berekend via `countrySeasonScore()` — geen sync nodig na het wijzigen van de reisperiode:
@@ -92,7 +100,7 @@ finalScore = (prefWeight  × pctPref
   - Boven budget: `50 × (1 − overshoot)²` → 0–50, zachte kwadratische curve
   - 5% over = 45, 10% over = 40, 33% over = 22, 50% over = 12
 - `budgetWeight = 0` → budget telt helemaal niet, ook geen verborgen penalty
-- `seasonWeight` = `SEASON_WEIGHT[U.seasonPref]` (High=2.0, Mid=1.0, Low=0.3, No=0.0)
+- `seasonWeight` = gewicht van seizoensscore, instelbaar via "What matters most" slider
 - `overstay` multiplier = straf voor te lang in één land
 - `comboFactor` = 1.08 voor combo trips, 1.0 voor single
 
@@ -131,12 +139,12 @@ finalScore = (prefWeight  × pctPref
 | Trip duration | Dagverdeling over landen, bepaalt haalbaarheid |
 | Travelers | Vluchten ×N, dagkosten ×(0.55+0.45×N) bij shared, ×N bij separate. Bij 2+ toont sidebar budget per persoon en kaarten tonen kosten per persoon |
 | Travel style | Kiest dagkostenkolom uit COUNTRIES tab |
-| Max countries | 1 land / tot 2 landen / alleen combos |
-| Avoid long flights | Filtert trips met `is_intercontinental=TRUE` |
+| Countries per trip | Slider 1–3 + "Exact count only" toggle |
+| Flight range | All destinations / Europe only / Outside Europe — filtert op `region_cluster` van eerste bestemming |
 | Travel period | Start/eindmaand bepaalt vliegkosten én seizoensscore |
-| Season preference | Weging van seizoensscore in ranking (High/Mid/Low/No) |
+| Season preference | Type seizoen dat voorkeur heeft (High/Mid/Low/No) |
 | Travel style weights | Hoe zwaar elk stijlaspect telt in `prefRaw` |
-| Ranking weights | Gewicht van stijl, budget en vermoeidheid in `finalScore` |
+| What matters most | Gewicht van stijl, budget en seizoen in `finalScore` |
 
 ---
 

@@ -1,4 +1,4 @@
-const CACHE = 'youridealtravel-v6';
+const CACHE = 'youridealtravel-v7';
 
 const LOCAL_ASSETS = [
   '/youridealtravel/',

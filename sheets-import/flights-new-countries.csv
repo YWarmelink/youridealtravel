@@ -1,0 +1,15 @@
+from,to,low_season_cost,mid_season_cost,high_season_cost,route_key,region_cluster
+Morocco,Spain,80,130,200,Morocco-Spain,Intercontinental
+Spain,Morocco,80,130,200,Spain-Morocco,Intercontinental
+Morocco,Portugal,80,130,200,Morocco-Portugal,Intercontinental
+Portugal,Morocco,80,130,200,Portugal-Morocco,Intercontinental
+Egypt,Turkey,100,160,240,Egypt-Turkey,Intercontinental
+Turkey,Egypt,100,160,240,Turkey-Egypt,Intercontinental
+India,Thailand,150,220,320,India-Thailand,Intercontinental
+Thailand,India,150,220,320,Thailand-India,Intercontinental
+India,Malaysia,140,210,300,India-Malaysia,Intercontinental
+Malaysia,India,140,210,300,Malaysia-India,Intercontinental
+Georgia,Uzbekistan,120,180,270,Georgia-Uzbekistan,Intercontinental
+Uzbekistan,Georgia,120,180,270,Uzbekistan-Georgia,Intercontinental
+China,Uzbekistan,150,220,320,China-Uzbekistan,Intercontinental
+Uzbekistan,China,150,220,320,Uzbekistan-China,Intercontinental

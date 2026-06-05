@@ -95,6 +95,61 @@ const RANK_WEIGHTS = [
   { uKey: 'seasonWeight', label: 'Season fit',   default: 3, min: 0, max: 10, step: 1 },
 ];
 
+// Which sub-regions border each other — used to validate 3-country combo routes.
+// If a country has no sub_region set, the check is skipped (fallback: allow).
+const SUBREGION_ADJACENT = {
+  // Europe
+  'Iberian Peninsula':      ['Western Europe', 'West Europe', 'South Europe', 'North Africa'],
+  'Western Europe':         ['Iberian Peninsula', 'Alpine', 'British Isles', 'Scandinavia', 'Italian Peninsula', 'South Europe', 'North Africa'],
+  'West Europe':            ['Iberian Peninsula', 'Alpine', 'British Isles', 'Scandinavia', 'Italian Peninsula', 'South Europe', 'North Africa'],
+  'Alpine':                 ['Western Europe', 'West Europe', 'Italian Peninsula', 'South Europe', 'Adriatic Balkans', 'Central & East Europe'],
+  'British Isles':          ['Western Europe', 'West Europe', 'Scandinavia'],
+  'Scandinavia':            ['Western Europe', 'West Europe', 'British Isles', 'Nordic Islands', 'North Europe', 'Baltics'],
+  'Nordic Islands':         ['Scandinavia'],
+  'North Europe':           ['Scandinavia'],
+  'Italian Peninsula':      ['Western Europe', 'West Europe', 'Alpine', 'South Europe', 'Adriatic Balkans', 'Greece & Aegean'],
+  'South Europe':           ['Western Europe', 'West Europe', 'Alpine', 'Adriatic Balkans', 'Greek & Aegean', 'Greece & Aegean', 'East Mediterranean', 'North Africa'],
+  'Adriatic Balkans':       ['Alpine', 'Italian Peninsula', 'South Europe', 'Central & East Europe', 'Greece & Aegean'],
+  'Central & East Europe':  ['Alpine', 'South Europe', 'Adriatic Balkans', 'Baltics', 'Caucasus'],
+  'Baltics':                ['Scandinavia', 'Central & East Europe'],
+  'Greece & Aegean':        ['Italian Peninsula', 'South Europe', 'Adriatic Balkans', 'East Mediterranean'],
+  'East Mediterranean':     ['Greece & Aegean', 'South Europe', 'North Africa', 'Caucasus', 'Arabian Peninsula'],
+  // Africa
+  'North Africa':           ['Iberian Peninsula', 'Western Europe', 'West Europe', 'South Europe', 'East Mediterranean', 'East Africa'],
+  'East Africa':            ['North Africa', 'Southern Africa', 'Arabian Peninsula'],
+  'West Africa':            ['North Africa'],
+  'Southern Africa':        ['East Africa'],
+  // Middle East
+  'Arabian Peninsula':      ['East Mediterranean', 'East Africa', 'South Asia'],
+  // Asia
+  'Caucasus':               ['East Mediterranean', 'South Europe', 'Central & East Europe', 'Central Asia'],
+  'Central Asia':           ['Caucasus', 'East Asia', 'South Asia'],
+  'South Asia':             ['Central Asia', 'SE Asia Mainland', 'SE Asia', 'Arabian Peninsula'],
+  'East Asia':              ['Central Asia', 'SE Asia Mainland', 'SE Asia', 'SE Asia Islands'],
+  'SE Asia Mainland':       ['East Asia', 'SE Asia Islands', 'SE Asia', 'South Asia'],
+  'SE Asia':                ['East Asia', 'SE Asia Islands', 'SE Asia Mainland', 'South Asia'],
+  'SE Asia Islands':        ['East Asia', 'SE Asia Mainland', 'SE Asia'],
+  // Americas
+  'North America':          ['Central America'],
+  'Central America':        ['North America', 'Caribbean', 'Northern South America', 'North South America'],
+  'Caribbean':              ['Central America', 'Northern South America', 'North South America'],
+  'Northern South America': ['Central America', 'Caribbean', 'Andean', 'Brazil', 'South America'],
+  'North South America':    ['Central America', 'Caribbean', 'Andean', 'Brazil', 'South America'],
+  'Andean':                 ['Northern South America', 'North South America', 'Brazil', 'South America', 'Southern Cone'],
+  'Brazil':                 ['Northern South America', 'North South America', 'Andean', 'South America', 'Southern Cone'],
+  'South America':          ['Andean', 'Brazil', 'Northern South America', 'North South America', 'Southern Cone'],
+  'Southern Cone':          ['Andean', 'Brazil', 'South America'],
+  // Oceania
+  'Australia & NZ':         ['Pacific Islands'],
+  'Pacific Islands':        ['Australia & NZ'],
+};
+
+function sameOrAdjacent(srA, srB) {
+  if (!srA || !srB) return true;
+  if (srA === srB) return true;
+  return (SUBREGION_ADJACENT[srA] || []).includes(srB);
+}
+
 const FLAGS = {
   'Japan': '🇯🇵',      'Taiwan': '🇹🇼',      'South Korea': '🇰🇷',
   'Italy': '🇮🇹',      'Spain': '🇪🇸',       'Austria': '🇦🇹',
@@ -321,15 +376,15 @@ function buildTripsFromData() {
     });
   });
 
-  // 3-country combos: zelfde regio
+  // 3-country combos: vliegroutes bestaan + route geografisch aangrenzend (a→b en b→c)
   countries.forEach(a => {
     countries.forEach(b => {
       if (b === a) return;
       countries.forEach(c => {
         if (c === a || c === b) return;
-        const cdA = countryData[a], cdB = countryData[b], cdC = countryData[c];
-        if (cdA.region !== cdB.region || cdA.region !== cdC.region) return;
         if (!(flightData[`NL-${a}`] && flightData[`${a}-${b}`] && flightData[`${b}-${c}`] && flightData[`${c}-NL`])) return;
+        const srA = countryData[a]?.sub_region, srB = countryData[b]?.sub_region, srC = countryData[c]?.sub_region;
+        if (!sameOrAdjacent(srA, srB) || !sameOrAdjacent(srB, srC)) return;
         const key = [a, b, c].sort().join('|');
         const cost = routeFlightCost(a, b, c);
         if (!bestCombo3.has(key) || cost < bestCombo3.get(key).cost) {
