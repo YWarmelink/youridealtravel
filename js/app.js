@@ -292,28 +292,37 @@ function loadFromCache() {
 }
 
 // Bouwt rawTrips vanuit COUNTRIES + FLIGHTS — geen aparte TRIP_ENGINE nodig.
-// Single trips: elk land in COUNTRIES. Combo trips: elk A→B paar waarbij
-// NL-A, A-B en B-NL allemaal bestaan in FLIGHTS.
+// Gemiddelde vliegkosten voor een route (voor vergelijking tussen permutaties)
+function routeFlightCost(a, b, c) {
+  const leg = (x, y) => {
+    const d = flightData[`${x}-${y}`];
+    return d ? (num(d.low) + num(d.mid) + num(d.high)) / 3 : 99999;
+  };
+  const last = c || b || a;
+  return leg('NL', a) + (b ? leg(a, b) : 0) + (c ? leg(b, c) : 0) + leg(last, 'NL');
+}
+
+// Single trips: elk land in COUNTRIES. Combo trips: per unieke set landen
+// alleen de goedkoopste routevolgorde bewaren — geen dubbele combinaties.
 function buildTripsFromData() {
   const countries = Object.keys(countryData);
-  const trips = [];
+  const bestCombo2 = new Map(); // 'A|B' (gesorteerd) → goedkoopste {a,b}
+  const bestCombo3 = new Map(); // 'A|B|C' (gesorteerd) → goedkoopste {a,b,c}
 
-  // Single trips
-  countries.forEach(a => {
-    trips.push({ trip_key: a, country_a: a, country_b: '', country_c: '' });
-  });
-
-  // 2-country combos: NL-A, A-B, B-NL all exist
+  // 2-country combos
   countries.forEach(a => {
     countries.forEach(b => {
       if (b === a) return;
-      if (flightData[`NL-${a}`] && flightData[`${a}-${b}`] && flightData[`${b}-NL`]) {
-        trips.push({ trip_key: `${a}+${b}`, country_a: a, country_b: b, country_c: '' });
+      if (!(flightData[`NL-${a}`] && flightData[`${a}-${b}`] && flightData[`${b}-NL`])) return;
+      const key = [a, b].sort().join('|');
+      const cost = routeFlightCost(a, b, '');
+      if (!bestCombo2.has(key) || cost < bestCombo2.get(key).cost) {
+        bestCombo2.set(key, { a, b, cost });
       }
     });
   });
 
-  // 3-country combos: NL-A, A-B, B-C, C-NL all exist, and all same region
+  // 3-country combos: zelfde regio
   countries.forEach(a => {
     countries.forEach(b => {
       if (b === a) return;
@@ -321,11 +330,28 @@ function buildTripsFromData() {
         if (c === a || c === b) return;
         const cdA = countryData[a], cdB = countryData[b], cdC = countryData[c];
         if (cdA.region !== cdB.region || cdA.region !== cdC.region) return;
-        if (flightData[`NL-${a}`] && flightData[`${a}-${b}`] && flightData[`${b}-${c}`] && flightData[`${c}-NL`]) {
-          trips.push({ trip_key: `${a}+${b}+${c}`, country_a: a, country_b: b, country_c: c });
+        if (!(flightData[`NL-${a}`] && flightData[`${a}-${b}`] && flightData[`${b}-${c}`] && flightData[`${c}-NL`])) return;
+        const key = [a, b, c].sort().join('|');
+        const cost = routeFlightCost(a, b, c);
+        if (!bestCombo3.has(key) || cost < bestCombo3.get(key).cost) {
+          bestCombo3.set(key, { a, b, c, cost });
         }
       });
     });
+  });
+
+  const trips = [];
+
+  countries.forEach(a => {
+    trips.push({ trip_key: a, country_a: a, country_b: '', country_c: '' });
+  });
+
+  bestCombo2.forEach(({ a, b }) => {
+    trips.push({ trip_key: `${a}+${b}`, country_a: a, country_b: b, country_c: '' });
+  });
+
+  bestCombo3.forEach(({ a, b, c }) => {
+    trips.push({ trip_key: `${a}+${b}+${c}`, country_a: a, country_b: b, country_c: c });
   });
 
   return trips;
