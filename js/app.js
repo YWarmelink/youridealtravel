@@ -774,12 +774,12 @@ function updateMap(ranked) {
 
   // Verbindingslijnen alleen voor gepinde combo trips
   const NL_COORD = [52.37, 4.89];
-  ranked.filter(c => c.hasB && pinnedKeys.has(c._t.trip_key)).forEach(c => {
+  ranked.filter(c => pinnedKeys.has(c._t.trip_key)).forEach(c => {
     const pA = COUNTRY_COORDS[c._t.country_a];
-    const pB = COUNTRY_COORDS[c._t.country_b];
+    const pB = c.hasB ? COUNTRY_COORDS[c._t.country_b] : null;
     const pC = c.hasC ? COUNTRY_COORDS[c._t.country_c] : null;
-    if (!pA || !pB) return;
-    const pts = [NL_COORD, pA, pB, ...(pC ? [pC] : []), NL_COORD];
+    if (!pA) return;
+    const pts = [NL_COORD, pA, ...(pB ? [pB] : []), ...(pC ? [pC] : []), NL_COORD];
     L.polyline(pts, { color: '#6366f1', weight: 2, opacity: 0.55, dashArray: '6,5' }).addTo(_markerGroup);
   });
 
