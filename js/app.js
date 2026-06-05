@@ -776,7 +776,7 @@ function updateMap(ranked) {
 
   // Verbindingslijnen voor top-tier combo trips
   const NL_COORD = [52.37, 4.89];
-  ranked.filter(c => c.hasB && (c.tier === 'TOP TIER' || c.tier === 'GOOD')).forEach(c => {
+  ranked.filter(c => c.hasB && c.rank <= 3).forEach(c => {
     const pA = COUNTRY_COORDS[c._t.country_a];
     const pB = COUNTRY_COORDS[c._t.country_b];
     const pC = c.hasC ? COUNTRY_COORDS[c._t.country_c] : null;
