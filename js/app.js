@@ -9,7 +9,7 @@ const GID = {
   COUNTRIES:     '2119597216',
   FLIGHTS:       '99695727',
 };
-const CACHE_KEY = 'youridealtravel_v1_data';
+const CACHE_KEY = 'youridealtravel_v2_data';
 const SYNC_KEY  = 'youridealtravel_v1_synced';
 
 function csvUrl(gid) {
@@ -115,9 +115,8 @@ const FLAGS = {
 // STATE
 // ─────────────────────────────────────────────────────────────
 let rawTrips      = [];
-let filterMap     = {};
 let countryData   = {};  // { 'Japan': { daily_cost_backpack, daily_cost_mid, daily_cost_premium, low_season, ... } }
-let flightData    = {};  // { 'NL-Japan': { low, mid, high }, ... }
+let flightData    = {};  // { 'NL-Japan': { low, mid, high, region }, ... }
 let currentFilter = 'bestmatch';
 let _lastRanked   = [];
 let _leafletMap   = null;
@@ -248,31 +247,23 @@ async function syncFromSheets() {
   if (btn) btn.disabled = true;
 
   try {
-    const [tripText, filterText, settingsText, countriesText, flightsText] = await Promise.all([
-      fetch(csvUrl(GID.TRIP_ENGINE)).then(r => r.text()),
-      fetch(csvUrl(GID.FILTER_ENGINE)).then(r => r.text()),
-      fetch(csvUrl(GID.SETTINGS)).then(r => r.text()),
+    const [countriesText, flightsText] = await Promise.all([
       fetch(csvUrl(GID.COUNTRIES)).then(r => r.text()),
       fetch(csvUrl(GID.FLIGHTS)).then(r => r.text()),
     ]);
-
-    const trips = parseCSV(tripText).filter(t => t.trip_key && t.trip_key !== 'trip_key');
-    const filterRows = parseCSV(filterText).filter(r => r.trip_id);
-    const fMap = {};
-    filterRows.forEach(r => { fMap[r.trip_id] = r; });
-    const settingsRows = parseCSV(settingsText).filter(r => r.setting_key);
-    const settings = {};
-    settingsRows.forEach(r => { settings[r.setting_key] = r.setting_value; });
 
     const cData = {};
     parseCSV(countriesText).filter(r => r.country).forEach(r => { cData[r.country] = r; });
 
     const fData = {};
     parseCSV(flightsText).filter(r => r.route_key).forEach(r => {
-      fData[r.route_key] = { low: num(r.low_season_cost), mid: num(r.mid_season_cost), high: num(r.high_season_cost) };
+      fData[r.route_key] = {
+        low: num(r.low_season_cost), mid: num(r.mid_season_cost), high: num(r.high_season_cost),
+        region: r.region_cluster || '',
+      };
     });
 
-    const payload = { trips, fMap, settings, cData, fData, synced: new Date().toISOString() };
+    const payload = { cData, fData, synced: new Date().toISOString() };
     localStorage.setItem(CACHE_KEY, JSON.stringify(payload));
     localStorage.setItem(SYNC_KEY, payload.synced);
 
@@ -291,6 +282,7 @@ function loadFromCache() {
   if (!raw) return false;
   try {
     const payload = JSON.parse(raw);
+    if (!payload.cData) return false; // oude cache-structuur, opnieuw syncen
     applyCache(payload);
     setSyncStatus('ok', payload.synced);
     return true;
@@ -299,12 +291,33 @@ function loadFromCache() {
   }
 }
 
+// Bouwt rawTrips vanuit COUNTRIES + FLIGHTS — geen aparte TRIP_ENGINE nodig.
+// Single trips: elk land in COUNTRIES. Combo trips: elk A→B paar waarbij
+// NL-A, A-B en B-NL allemaal bestaan in FLIGHTS.
+function buildTripsFromData() {
+  const countries = Object.keys(countryData);
+  const trips = [];
+
+  countries.forEach(a => {
+    trips.push({ trip_key: a, country_a: a, country_b: '' });
+  });
+
+  countries.forEach(a => {
+    countries.forEach(b => {
+      if (a === b) return;
+      if (flightData[`NL-${a}`] && flightData[`${a}-${b}`] && flightData[`${b}-NL`]) {
+        trips.push({ trip_key: `${a}+${b}`, country_a: a, country_b: b });
+      }
+    });
+  });
+
+  return trips;
+}
+
 function applyCache(payload) {
-  rawTrips    = payload.trips;
-  filterMap   = payload.fMap;
   countryData = payload.cData || {};
   flightData  = payload.fData || {};
-  // Sheet SETTINGS worden niet meer in U geladen — JS defaults zijn de bron van waarheid
+  rawTrips    = buildTripsFromData();
   refreshUI();
   recalculate();
 }
@@ -393,181 +406,134 @@ function flightLegCost(from, to) {
 
 function calcTrip(t) {
   const hasB = !!(t.country_b && t.country_b !== '');
-
-  // Daily costs — use real per-country per-style values when available
-  const styleCol = STYLE_COL[U.travelStyle] || 'daily_cost_mid';
-  const luxMult  = U.travelStyle === 'Luxury' ? LUXURY_MULT : 1;
   const cdA = countryData[t.country_a];
   const cdB = hasB ? countryData[t.country_b] : null;
-  const dailyCostA = cdA
-    ? num(cdA[styleCol]) * luxMult
-    : num(t.daily_cost_a) * (STYLE_MULT[U.travelStyle] || 1.35);
-  const dailyCostB = cdB
-    ? num(cdB[styleCol]) * luxMult
-    : num(t.daily_cost_b) * (STYLE_MULT[U.travelStyle] || 1.35);
+  if (!cdA || (hasB && !cdB)) return { _t: t, feasible: false, reason: 'No country data' };
 
-  // Travelers: flights ×N, daily costs depend on shared/separate accommodation
-  const travelersDaily = U.sharedAccom
-    ? 0.55 + 0.45 * U.travelers   // shared room: accommodation cost split
-    : U.travelers;                  // separate rooms: each pays full daily rate
+  const styleCol = STYLE_COL[U.travelStyle] || 'daily_cost_mid';
+  const luxMult  = U.travelStyle === 'Luxury' ? LUXURY_MULT : 1;
+  const dailyCostA = num(cdA[styleCol]) * luxMult;
+  const dailyCostB = hasB ? num(cdB[styleCol]) * luxMult : 0;
 
-  // Flight costs — use per-route per-season values when available, else fall back
-  let flightPerPerson;
-  if (Object.keys(flightData).length > 0) {
-    const legNLtoA = flightLegCost('NL', t.country_a);
-    const legAtoB  = hasB ? flightLegCost(t.country_a, t.country_b) : 0;
-    const legBtoNL = flightLegCost(hasB ? t.country_b : t.country_a, 'NL');
-    flightPerPerson = legNLtoA + legAtoB + legBtoNL;
-  } else {
-    flightPerPerson = num(t.total_flight_cost) * monthWindowMult(U.startMonth, U.endMonth);
-  }
-  const flight = flightPerPerson * U.travelers;
+  const travelersDaily = U.sharedAccom ? 0.55 + 0.45 * U.travelers : U.travelers;
 
-  const minA = num(t.min_days_a), idealA = num(t.ideal_days_a), maxA = num(t.max_days_a);
+  const legNLtoA = flightLegCost('NL', t.country_a);
+  const legAtoB  = hasB ? flightLegCost(t.country_a, t.country_b) : 0;
+  const legBtoNL = flightLegCost(hasB ? t.country_b : t.country_a, 'NL');
+  const flight   = (legNLtoA + legAtoB + legBtoNL) * U.travelers;
+
+  const minA = num(cdA.min_days), idealA = num(cdA.ideal_days), maxA = num(cdA.max_days);
   let daysA, daysB;
 
   if (hasB) {
-    const minB = num(t.min_days_b), idealB = num(t.ideal_days_b);
+    const minB = num(cdB.min_days), idealB = num(cdB.ideal_days);
     const minTotal = minA + minB;
     if (U.days < minTotal) return { _t: t, feasible: false, reason: `Needs ≥${minTotal} days` };
-
-    // Distribute days by ideal ratio — no max cap, user duration is the ceiling
     const totalIdeal = idealA + idealB;
     const ratioA     = totalIdeal > 0 ? idealA / totalIdeal : 0.5;
     daysA = Math.max(minA, Math.round(U.days * ratioA));
     daysB = U.days - daysA;
-    if (daysB < minB) {
-      daysB = minB;
-      daysA = Math.max(minA, U.days - daysB);
-    }
+    if (daysB < minB) { daysB = minB; daysA = Math.max(minA, U.days - daysB); }
   } else {
     if (U.days < minA) return { _t: t, feasible: false, reason: `Needs ≥${minA} days` };
     daysA = U.days;
     daysB = 0;
   }
 
-  // Overstay penalty: how far over max_days is each country (0 = within max)
-  const maxB = hasB ? num(t.max_days_b) : 0;
+  const maxB = hasB ? num(cdB.max_days) : 0;
   const overstayA = maxA > 0 ? Math.max(0, daysA - maxA) / maxA : 0;
   const overstayB = hasB && maxB > 0 ? Math.max(0, daysB - maxB) / maxB : 0;
   const rawOverstay = Math.max(overstayA, overstayB);
 
-  const cost = flight
-    + daysA * dailyCostA * travelersDaily
-    + (hasB ? daysB * dailyCostB * travelersDaily : 0);
+  const cost    = flight + daysA * dailyCostA * travelersDaily + (hasB ? daysB * dailyCostB * travelersDaily : 0);
+  const costFit = cost <= U.budget ? 'OK' : 'OVER';
 
-  const costFit   = cost <= U.budget ? 'OK' : 'OVER';
-  const budgetRaw = (U.budget - cost) / U.budget * 100;
-
-  // Days-weighted style scores from COUNTRIES (authoritative source).
-  // Combo: each country's scores weighted by days spent there.
+  // Day-weighted scores and fatigue from COUNTRIES
   const totalDays = daysA + daysB;
   const wA = totalDays > 0 ? daysA / totalDays : 1;
   const wB = hasB && totalDays > 0 ? daysB / totalDays : 0;
-  const catScores = cdA ? {
+
+  const catScores = {
     adventure: wA * num(cdA.adventure) + wB * num(cdB?.adventure || 0),
     food:      wA * num(cdA.food)      + wB * num(cdB?.food      || 0),
     nature:    wA * num(cdA.nature)    + wB * num(cdB?.nature    || 0),
     beach:     wA * num(cdA.beach)     + wB * num(cdB?.beach     || 0),
     nightlife: wA * num(cdA.nightlife) + wB * num(cdB?.nightlife || 0),
     culture:   wA * num(cdA.culture)   + wB * num(cdB?.culture   || 0),
-  } : {
-    adventure: num(t.adventure_score), food:      num(t.food_score),
-    nature:    num(t.nature_score),    beach:     num(t.beach_score),
-    nightlife: num(t.nightlife_score), culture:   num(t.culture_score),
   };
 
+  const fatigueRaw = wA * num(cdA.fatigue) + wB * num(cdB?.fatigue || 0);
+
   const prefRaw = (
-    U.adventure * catScores.adventure +
-    U.food      * catScores.food      +
-    U.nature    * catScores.nature    +
-    U.beach     * catScores.beach     +
-    U.nightlife * catScores.nightlife +
-    U.culture   * catScores.culture
+    U.adventure * catScores.adventure + U.food      * catScores.food  +
+    U.nature    * catScores.nature    + U.beach     * catScores.beach  +
+    U.nightlife * catScores.nightlife + U.culture   * catScores.culture
   );
 
   return {
-    _t: t,
-    feasible: true,
-    hasB,
-    daysA, daysB,
-    cost, costFit,
-    catScores,
-    rawBudget:  budgetRaw,
+    _t: t, feasible: true, hasB, daysA, daysB, cost, costFit, catScores, fatigueRaw,
+    rawBudget:  (U.budget - cost) / U.budget * 100,
     rawPref:    prefRaw,
-    rawFatigue: 100 - num(t.fatigue_penalty),
-    rawSeason:  Object.keys(countryData).length > 0
-      ? (hasB
-          ? (countrySeasonScore(t.country_a, U.startMonth, U.endMonth, U.seasonPref) +
-             countrySeasonScore(t.country_b, U.startMonth, U.endMonth, U.seasonPref)) / 2
-          : countrySeasonScore(t.country_a, U.startMonth, U.endMonth, U.seasonPref))
-      : num(t.total_season_score),
-    rawWish:     num(t.total_wishlist_bonus),
-    rawOverstay: rawOverstay,
+    rawFatigue: 100 - fatigueRaw * 10,
+    rawSeason:  hasB
+      ? (countrySeasonScore(t.country_a, U.startMonth, U.endMonth, U.seasonPref) +
+         countrySeasonScore(t.country_b, U.startMonth, U.endMonth, U.seasonPref)) / 2
+      : countrySeasonScore(t.country_a, U.startMonth, U.endMonth, U.seasonPref),
+    rawOverstay,
   };
 }
 
 // Calculates a trip using ideal_days per country instead of U.days
 function calcTripIdeal(t) {
   const hasB = !!(t.country_b && t.country_b !== '');
+  const cdA = countryData[t.country_a];
+  const cdB = hasB ? countryData[t.country_b] : null;
+  if (!cdA || (hasB && !cdB)) return { _t: t, feasible: false, reason: 'No country data' };
 
   const styleCol = STYLE_COL[U.travelStyle] || 'daily_cost_mid';
   const luxMult  = U.travelStyle === 'Luxury' ? LUXURY_MULT : 1;
-  const cdA = countryData[t.country_a];
-  const cdB = hasB ? countryData[t.country_b] : null;
-  const dailyCostA = cdA ? num(cdA[styleCol]) * luxMult : num(t.daily_cost_a) * (STYLE_MULT[U.travelStyle] || 1.35);
-  const dailyCostB = cdB ? num(cdB[styleCol]) * luxMult : num(t.daily_cost_b) * (STYLE_MULT[U.travelStyle] || 1.35);
+  const dailyCostA = num(cdA[styleCol]) * luxMult;
+  const dailyCostB = hasB ? num(cdB[styleCol]) * luxMult : 0;
   const travelersDaily = U.sharedAccom ? 0.55 + 0.45 * U.travelers : U.travelers;
 
-  let flightPerPerson;
-  if (Object.keys(flightData).length > 0) {
-    flightPerPerson = flightLegCost('NL', t.country_a)
-      + (hasB ? flightLegCost(t.country_a, t.country_b) : 0)
-      + flightLegCost(hasB ? t.country_b : t.country_a, 'NL');
-  } else {
-    flightPerPerson = num(t.total_flight_cost) * monthWindowMult(U.startMonth, U.endMonth);
-  }
-  const flight = flightPerPerson * U.travelers;
+  const flight = (flightLegCost('NL', t.country_a)
+    + (hasB ? flightLegCost(t.country_a, t.country_b) : 0)
+    + flightLegCost(hasB ? t.country_b : t.country_a, 'NL')) * U.travelers;
 
-  const daysA = Math.max(num(t.min_days_a), num(t.ideal_days_a));
-  const daysB = hasB ? Math.max(num(t.min_days_b), num(t.ideal_days_b)) : 0;
+  const daysA = Math.max(num(cdA.min_days), num(cdA.ideal_days));
+  const daysB = hasB ? Math.max(num(cdB.min_days), num(cdB.ideal_days)) : 0;
 
-  const cost = flight + daysA * dailyCostA * travelersDaily + (hasB ? daysB * dailyCostB * travelersDaily : 0);
-  const costFit   = cost <= U.budget ? 'OK' : 'OVER';
-  const budgetRaw = (U.budget - cost) / U.budget * 100;
+  const cost    = flight + daysA * dailyCostA * travelersDaily + (hasB ? daysB * dailyCostB * travelersDaily : 0);
+  const costFit = cost <= U.budget ? 'OK' : 'OVER';
 
-  const totalDaysI = daysA + daysB;
-  const wAi = totalDaysI > 0 ? daysA / totalDaysI : 1;
-  const wBi = hasB && totalDaysI > 0 ? daysB / totalDaysI : 0;
-  const catScores = cdA ? {
-    adventure: wAi * num(cdA.adventure) + wBi * num(cdB?.adventure || 0),
-    food:      wAi * num(cdA.food)      + wBi * num(cdB?.food      || 0),
-    nature:    wAi * num(cdA.nature)    + wBi * num(cdB?.nature    || 0),
-    beach:     wAi * num(cdA.beach)     + wBi * num(cdB?.beach     || 0),
-    nightlife: wAi * num(cdA.nightlife) + wBi * num(cdB?.nightlife || 0),
-    culture:   wAi * num(cdA.culture)   + wBi * num(cdB?.culture   || 0),
-  } : {
-    adventure: num(t.adventure_score), food:      num(t.food_score),
-    nature:    num(t.nature_score),    beach:     num(t.beach_score),
-    nightlife: num(t.nightlife_score), culture:   num(t.culture_score),
+  const totalDays = daysA + daysB;
+  const wA = totalDays > 0 ? daysA / totalDays : 1;
+  const wB = hasB && totalDays > 0 ? daysB / totalDays : 0;
+
+  const catScores = {
+    adventure: wA * num(cdA.adventure) + wB * num(cdB?.adventure || 0),
+    food:      wA * num(cdA.food)      + wB * num(cdB?.food      || 0),
+    nature:    wA * num(cdA.nature)    + wB * num(cdB?.nature    || 0),
+    beach:     wA * num(cdA.beach)     + wB * num(cdB?.beach     || 0),
+    nightlife: wA * num(cdA.nightlife) + wB * num(cdB?.nightlife || 0),
+    culture:   wA * num(cdA.culture)   + wB * num(cdB?.culture   || 0),
   };
+
+  const fatigueRaw = wA * num(cdA.fatigue) + wB * num(cdB?.fatigue || 0);
   const prefRaw = (
-    U.adventure * catScores.adventure + U.food * catScores.food +
-    U.nature    * catScores.nature    + U.beach * catScores.beach +
-    U.nightlife * catScores.nightlife + U.culture * catScores.culture
+    U.adventure * catScores.adventure + U.food      * catScores.food  +
+    U.nature    * catScores.nature    + U.beach     * catScores.beach  +
+    U.nightlife * catScores.nightlife + U.culture   * catScores.culture
   );
 
   return {
-    _t: t, feasible: true, hasB, daysA, daysB, cost, costFit,
-    catScores, rawBudget: budgetRaw, rawPref: prefRaw,
-    rawFatigue: 100 - num(t.fatigue_penalty),
-    rawSeason: Object.keys(countryData).length > 0
-      ? (hasB
-          ? (countrySeasonScore(t.country_a, U.startMonth, U.endMonth, U.seasonPref) +
-             countrySeasonScore(t.country_b, U.startMonth, U.endMonth, U.seasonPref)) / 2
-          : countrySeasonScore(t.country_a, U.startMonth, U.endMonth, U.seasonPref))
-      : num(t.total_season_score),
-    rawWish: num(t.total_wishlist_bonus),
+    _t: t, feasible: true, hasB, daysA, daysB, cost, costFit, catScores, fatigueRaw,
+    rawBudget: (U.budget - cost) / U.budget * 100, rawPref: prefRaw,
+    rawFatigue: 100 - fatigueRaw * 10,
+    rawSeason: hasB
+      ? (countrySeasonScore(t.country_a, U.startMonth, U.endMonth, U.seasonPref) +
+         countrySeasonScore(t.country_b, U.startMonth, U.endMonth, U.seasonPref)) / 2
+      : countrySeasonScore(t.country_a, U.startMonth, U.endMonth, U.seasonPref),
   };
 }
 
@@ -646,11 +612,10 @@ function calcAndRank() {
   if (rawTrips.length === 0) return [];
 
   const allowed = rawTrips.filter(t => {
-    const fe  = filterMap[t.trip_key] || {};
     const hasB = !!(t.country_b && t.country_b !== '');
-    if (U.avoidLong              && fe.is_intercontinental === 'TRUE') return false;
-    if (U.maxCountries === 1     && hasB)  return false;
-    if (U.comboOnly              && !hasB) return false;
+    if (U.avoidLong          && (flightData[`NL-${t.country_a}`]?.region || '') === 'Intercontinental') return false;
+    if (U.maxCountries === 1 && hasB)  return false;
+    if (U.comboOnly          && !hasB) return false;
     return true;
   });
 
@@ -807,9 +772,9 @@ function renderCard(c) {
   const seasonCls = seasonVal >= 50 ? 'season-peak' : seasonVal >= 20 ? 'season-ok' : 'season-off';
   const seasonLbl = seasonVal >= 50 ? '☀️ Peak season' : seasonVal >= 20 ? '🌤 Good season' : '🌧 Off season';
 
-  const fatVal = num(t.fatigue_penalty);
-  const fatCls = fatVal <= 10 ? 'fat-low' : fatVal <= 14 ? 'fat-mid' : 'fat-high';
-  const fatLbl = fatVal <= 10 ? '😌 Easy trip' : fatVal <= 14 ? '🎒 Moderate' : '💪 Demanding';
+  const fatVal = c.fatigueRaw;
+  const fatCls = fatVal <= 4 ? 'fat-low' : fatVal <= 6 ? 'fat-mid' : 'fat-high';
+  const fatLbl = fatVal <= 4 ? '😌 Easy trip' : fatVal <= 6 ? '🎒 Moderate' : '💪 Demanding';
 
   const isPinned = pinnedKeys.has(t.trip_key);
 
@@ -921,8 +886,8 @@ function renderCompare() {
     const daysText = c.hasB ? `${c.daysA}d + ${c.daysB}d` : `${c.daysA} days`;
     const seasonVal = c.rawSeason;
     const seasonLbl = seasonVal >= 50 ? '☀️ Peak' : seasonVal >= 20 ? '🌤 Good' : '🌧 Off';
-    const fatVal    = num(t.fatigue_penalty);
-    const fatLbl    = fatVal <= 10 ? '😌 Easy' : fatVal <= 14 ? '🎒 Moderate' : '💪 Demanding';
+    const fatVal    = c.fatigueRaw;
+    const fatLbl    = fatVal <= 4 ? '😌 Easy' : fatVal <= 6 ? '🎒 Moderate' : '💪 Demanding';
     const topS = STYLES.map(s => ({ ...s, val: c.catScores[s.uKey] })).sort((a, b) => b.val - a.val).slice(0, 3);
 
     return `
