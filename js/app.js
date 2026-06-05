@@ -865,13 +865,12 @@ function renderCard(c) {
     }
   }
 
-  const barW     = Math.max(3, c.budgetScore);
-  const barClass = c.costFit === 'OVER' ? 'fill-over'
-                 : c.budgetScore >= 70   ? 'fill-great'
-                 : c.budgetScore >= 40   ? 'fill-good'
-                 :                         'fill-ok';
-  const roomLeft = U.budget - c.cost;
-  const barLabel = c.costFit === 'OK'
+  const roomLeft  = U.budget - c.cost;
+  const barW      = Math.min(100, Math.max(3, (c.cost / U.budget) * 100));
+  const barClass  = c.costFit === 'OVER'          ? 'fill-over'
+                  : c.cost < U.budget * 0.8        ? 'fill-great'
+                  :                                  'fill-ok';
+  const barLabel  = c.costFit === 'OK'
     ? `€${Math.round(roomLeft).toLocaleString('nl-NL')} under budget`
     : `€${Math.abs(Math.round(roomLeft)).toLocaleString('nl-NL')} over budget`;
 
