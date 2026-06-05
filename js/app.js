@@ -119,6 +119,7 @@ let currentFilter = 'bestmatch';
 let _lastRanked   = [];
 let _leafletMap   = null;
 let _markerGroup  = null;
+let _tileLayer    = null;
 let hasPending    = false;
 let pinnedKeys    = new Set();
 
@@ -507,10 +508,10 @@ function calcTrip(t) {
     hasC && maxC > 0 ? Math.max(0, daysC - maxC) / maxC : 0
   );
 
-  const cost = flight
-    + daysA * dailyCostA * travelersDaily
+  const stayCost = daysA * dailyCostA * travelersDaily
     + (hasB ? daysB * dailyCostB * travelersDaily : 0)
     + (hasC ? daysC * dailyCostC * travelersDaily : 0);
+  const cost    = flight + stayCost;
   const costFit = cost <= U.budget ? 'OK' : 'OVER';
 
   const totalDays = daysA + daysB + daysC;
@@ -536,7 +537,7 @@ function calcTrip(t) {
   const rawSeason = seasons.reduce((s, c) => s + countrySeasonScore(c, U.startMonth, U.endMonth, U.seasonPref), 0) / seasons.length;
 
   return {
-    _t: t, feasible: true, hasB, hasC, daysA, daysB, daysC, cost, costFit, catScores, fatigueRaw,
+    _t: t, feasible: true, hasB, hasC, daysA, daysB, daysC, cost, flightCost: flight, stayCost, costFit, catScores, fatigueRaw,
     rawBudget: (U.budget - cost) / U.budget * 100,
     rawPref: prefRaw, rawFatigue: 100 - fatigueRaw * 10, rawSeason, rawOverstay,
   };
@@ -570,10 +571,10 @@ function calcTripIdeal(t) {
   const daysB = hasB ? Math.max(num(cdB.min_days), num(cdB.ideal_days)) : 0;
   const daysC = hasC ? Math.max(num(cdC.min_days), num(cdC.ideal_days)) : 0;
 
-  const cost = flight
-    + daysA * dailyCostA * travelersDaily
+  const stayCost = daysA * dailyCostA * travelersDaily
     + (hasB ? daysB * dailyCostB * travelersDaily : 0)
     + (hasC ? daysC * dailyCostC * travelersDaily : 0);
+  const cost    = flight + stayCost;
   const costFit = cost <= U.budget ? 'OK' : 'OVER';
 
   const totalDays = daysA + daysB + daysC;
@@ -596,7 +597,7 @@ function calcTripIdeal(t) {
   const rawSeason = seasons.reduce((s, c) => s + countrySeasonScore(c, U.startMonth, U.endMonth, U.seasonPref), 0) / seasons.length;
 
   return {
-    _t: t, feasible: true, hasB, hasC, daysA, daysB, daysC, cost, costFit, catScores, fatigueRaw,
+    _t: t, feasible: true, hasB, hasC, daysA, daysB, daysC, cost, flightCost: flight, stayCost, costFit, catScores, fatigueRaw,
     rawBudget: (U.budget - cost) / U.budget * 100, rawPref: prefRaw,
     rawFatigue: 100 - fatigueRaw * 10, rawSeason,
   };
@@ -752,9 +753,8 @@ function initMap() {
   });
   _leafletMap.fitBounds([[-58, -170], [72, 170]]);
   _leafletMap.zoomIn();
-  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    maxZoom: 10,
-  }).addTo(_leafletMap);
+  const isDark = document.documentElement.dataset.theme === 'dark';
+  _tileLayer = L.tileLayer(mapTileUrl(isDark), { maxZoom: 10 }).addTo(_leafletMap);
   _markerGroup = L.layerGroup().addTo(_leafletMap);
 }
 
@@ -908,6 +908,7 @@ function renderCard(c, displayRank) {
         </span>
       </div>
       ${U.travelers > 1 ? `<div class="cost-pp">€${Math.round(c.cost).toLocaleString('nl-NL')} <span class="cost-pp-label">total</span></div>` : ''}
+      <div class="cost-split">✈ €${Math.round(c.flightCost).toLocaleString('nl-NL')} <span class="cost-split-sep">·</span> 🏨 €${Math.round(c.stayCost).toLocaleString('nl-NL')}</div>
       ${daysHtml}
       ${idealHtml}
       <div class="budget-bar-wrap">
@@ -922,9 +923,9 @@ function renderCard(c, displayRank) {
         <span class="indicator ${fatCls}">${fatLbl}</span>
       </div>
       <div class="score-breakdown">
-        <div class="sb-item"><span class="sb-lbl">Style</span>  <span class="sb-stars">${toStars(c.pctPref)}</span></div>
-        <div class="sb-item"><span class="sb-lbl">Budget</span> <span class="sb-stars ${c.costFit === 'OVER' ? 'sb-stars-over' : ''}">${toStars(c.rankBudgetScore ?? c.budgetScore)}</span></div>
-        <div class="sb-item"><span class="sb-lbl">Fatigue</span><span class="sb-stars">${toStars(c.pctFatigue || 0)}</span></div>
+        <div class="sb-item"><span class="sb-lbl">Style</span><span class="sb-stars">${toStars(c.pctPref)}</span></div>
+        <div class="sb-item"><span class="sb-lbl">Budget</span><span class="sb-stars ${c.costFit === 'OVER' ? 'sb-stars-over' : ''}">${toStars(c.rankBudgetScore ?? c.budgetScore)}</span></div>
+        <div class="sb-item"><span class="sb-lbl">Easy</span><span class="sb-stars">${toStars(c.pctFatigue || 0)}</span></div>
       </div>
     </div>
   `;
@@ -1012,10 +1013,17 @@ function renderCompare() {
           <button class="unpin-btn" data-key="${t.trip_key}">✕</button>
         </div>
         <div class="compare-stat-row"><span class="csl">Cost</span>     <span class="csv compare-cost">€${Math.round(c.cost).toLocaleString('nl-NL')}</span></div>
+        <div class="compare-stat-row"><span class="csl">✈ Flights</span><span class="csv">€${Math.round(c.flightCost || 0).toLocaleString('nl-NL')}</span></div>
+        <div class="compare-stat-row"><span class="csl">🏨 Stay</span>  <span class="csv">€${Math.round(c.stayCost || 0).toLocaleString('nl-NL')}</span></div>
         <div class="compare-stat-row"><span class="csl">Duration</span> <span class="csv">${daysText}</span></div>
         <div class="compare-stat-row"><span class="csl">Season</span>   <span class="csv">${seasonLbl}</span></div>
         <div class="compare-stat-row"><span class="csl">Fatigue</span>  <span class="csv">${fatLbl}</span></div>
-        <div class="compare-styles">${topS.map(s => `<span>${s.icon} ${s.label} <b>${s.val}</b></span>`).join('')}</div>
+        <div class="compare-score-row">
+          <span class="csc">Style</span><span class="css-stars">${toStars(c.pctPref || 0)}</span>
+          <span class="csc">Budget</span><span class="css-stars ${c.costFit === 'OVER' ? 'sb-stars-over' : ''}">${toStars(c.rankBudgetScore ?? c.budgetScore)}</span>
+          <span class="csc">Easy</span><span class="css-stars">${toStars(c.pctFatigue || 0)}</span>
+        </div>
+        <div class="compare-styles">${topS.map(s => `<span>${s.icon} ${s.label} <span class="css-stars">${toStars(s.val, 10)}</span></span>`).join('')}</div>
       </div>`;
   }).join('');
 
@@ -1210,11 +1218,21 @@ function toggleTheme() {
   applyTheme(isDark ? 'light' : 'dark');
 }
 
+function mapTileUrl(dark) {
+  return dark
+    ? 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png'
+    : 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png';
+}
+
 function applyTheme(theme) {
-  document.documentElement.dataset.theme = theme === 'dark' ? 'dark' : '';
+  const dark = theme === 'dark';
+  document.documentElement.dataset.theme = dark ? 'dark' : '';
   localStorage.setItem('yit_theme', theme);
   const btn = document.getElementById('theme-toggle');
-  if (btn) btn.textContent = theme === 'dark' ? '☀️' : '🌙';
+  if (btn) btn.textContent = dark ? '☀️' : '🌙';
+  if (_tileLayer && _leafletMap) {
+    _tileLayer.setUrl(mapTileUrl(dark));
+  }
 }
 
 // ─────────────────────────────────────────────────────────────
