@@ -83,13 +83,15 @@
       <div class="settings-divider"></div>
 
       <div class="settings-section">
-        <div class="section-label">Max countries per trip</div>
-        <div class="btn-group">
-          <button class="group-btn" data-val="1" id="max-1">1</button>
-          <button class="group-btn active" data-val="2" id="max-2">Tot 2</button>
-          <button class="group-btn" data-val="combo" id="max-combo">Exact 2</button>
-          <button class="group-btn" data-val="3" id="max-3">Tot 3</button>
-          <button class="group-btn" data-val="triple" id="max-triple">Exact 3</button>
+        <div class="section-label">Countries per trip</div>
+        <div class="big-value" id="maxc-display">Up to 2 countries</div>
+        <input type="range" class="range-input" id="maxc-slider" min="1" max="3" step="1" value="2">
+        <div class="toggles" id="exact-only-row">
+          <label class="toggle-row">
+            <input type="checkbox" id="exact-only">
+            <span class="toggle-track"></span>
+            <span>Exact count only</span>
+          </label>
         </div>
       </div>
 

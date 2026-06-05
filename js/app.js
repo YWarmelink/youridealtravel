@@ -133,8 +133,7 @@ let U = {
   endMonth: 11,
   seasonPref: 'Mid',
   maxCountries: 2,
-  comboOnly: false,
-  tripleOnly: false,
+  exactOnly: false,
   flightRange: 'all',
   travelers: 1,
   sharedAccom: true,
@@ -659,10 +658,9 @@ function calcAndRank() {
     const _isLong = (flightData[`NL-${t.country_a}`]?.region || '') === 'Intercontinental';
     if (U.flightRange === 'europe' && _isLong)  return false;
     if (U.flightRange === 'world'  && !_isLong) return false;
-    if (U.maxCountries === 1 && hasB)  return false;
-    if (U.comboOnly          && !hasB) return false;
-    if (U.tripleOnly         && !hasC) return false;
-    if (U.maxCountries === 2 && hasC)  return false;
+    const _cc = hasC ? 3 : hasB ? 2 : 1;
+    if (_cc > U.maxCountries)               return false;
+    if (U.exactOnly && _cc !== U.maxCountries) return false;
     return true;
   });
 
@@ -1006,6 +1004,19 @@ function buildSliders() {
 }
 
 // Push U values back into all UI elements (called after cache load)
+function syncMaxC(maxC, exact) {
+  const labels = { 1: '1 country', 2: 'Up to 2 countries', 3: 'Up to 3 countries' };
+  const exactLabels = { 1: '1 country', 2: 'Exactly 2 countries', 3: 'Exactly 3 countries' };
+  const displayEl = document.getElementById('maxc-display');
+  const sliderEl  = document.getElementById('maxc-slider');
+  const checkEl   = document.getElementById('exact-only');
+  const rowEl     = document.getElementById('exact-only-row');
+  if (displayEl) displayEl.textContent = exact ? exactLabels[maxC] : labels[maxC];
+  if (sliderEl)  sliderEl.value = maxC;
+  if (checkEl)   checkEl.checked = exact;
+  if (rowEl)     rowEl.style.display = maxC === 1 ? 'none' : '';
+}
+
 function refreshUI() {
   pendingU = { ...U };
   hasPending = false;
@@ -1029,11 +1040,7 @@ function refreshUI() {
   document.getElementById('range-world').classList.toggle('active',  U.flightRange === 'world');
   document.getElementById('accom-shared').classList.toggle('active', U.sharedAccom);
   document.getElementById('accom-separate').classList.toggle('active', !U.sharedAccom);
-  document.getElementById('max-1').classList.toggle('active', U.maxCountries === 1);
-  document.getElementById('max-2').classList.toggle('active', U.maxCountries === 2 && !U.comboOnly && !U.tripleOnly);
-  document.getElementById('max-combo').classList.toggle('active', U.comboOnly);
-  document.getElementById('max-3').classList.toggle('active', U.maxCountries === 3 && !U.tripleOnly);
-  document.getElementById('max-triple').classList.toggle('active', U.tripleOnly);
+  syncMaxC(U.maxCountries, U.exactOnly);
 
   STYLES.forEach(s => {
     const slider = document.getElementById(`sl-${s.uKey}`);
@@ -1192,23 +1199,17 @@ document.addEventListener('DOMContentLoaded', () => {
     updateStyleHints();
   });
 
-  // Max countries
-  const setMaxBtn = (maxC, combo, triple) => {
-    pendingU.maxCountries = maxC;
-    pendingU.comboOnly    = combo;
-    pendingU.tripleOnly   = triple;
-    document.getElementById('max-1').classList.toggle('active', maxC === 1);
-    document.getElementById('max-2').classList.toggle('active', maxC === 2 && !combo && !triple);
-    document.getElementById('max-combo').classList.toggle('active', combo);
-    document.getElementById('max-3').classList.toggle('active', maxC === 3 && !triple);
-    document.getElementById('max-triple').classList.toggle('active', triple);
+  // Max countries slider
+  document.getElementById('maxc-slider').addEventListener('input', e => {
+    pendingU.maxCountries = +e.target.value;
+    syncMaxC(pendingU.maxCountries, pendingU.exactOnly);
     markPending();
-  };
-  document.getElementById('max-1').addEventListener('click',      () => setMaxBtn(1, false, false));
-  document.getElementById('max-2').addEventListener('click',      () => setMaxBtn(2, false, false));
-  document.getElementById('max-combo').addEventListener('click',  () => setMaxBtn(2, true,  false));
-  document.getElementById('max-3').addEventListener('click',      () => setMaxBtn(3, false, false));
-  document.getElementById('max-triple').addEventListener('click', () => setMaxBtn(3, false, true));
+  });
+  document.getElementById('exact-only').addEventListener('change', e => {
+    pendingU.exactOnly = e.target.checked;
+    syncMaxC(pendingU.maxCountries, pendingU.exactOnly);
+    markPending();
+  });
 
   // Toggles
   const setFlightRange = val => {
